@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import matter from "gray-matter";
 import remarkGfm from "remark-gfm";
@@ -64,6 +64,34 @@ type CreateMarkdownResponse = {
   error?: string;
 };
 
+type BlogexConfigResponse = {
+  exists?: boolean;
+  config?: {
+    targetRepo?: string;
+    targetBranch?: string;
+    targetDirectory?: string;
+  } | null;
+  error?: string;
+};
+
+type SyncStatusResponse = {
+  exists?: boolean;
+  error?: string;
+};
+
+type TargetConfig = {
+  targetRepo: string;
+  targetBranch: string;
+  targetDirectory: string;
+};
+
+type TargetStatus =
+  | "unavailable"
+  | "checking"
+  | "exists"
+  | "missing"
+  | "error";
+
 type PersistedConnectState = {
   selectedRepo?: string;
   selectedBranch?: string;
@@ -114,6 +142,9 @@ export default function ConnectRepositoriesPage() {
   const [resumeState, setResumeState] = useState<PersistedConnectState | null>(
     null,
   );
+  const [targetConfig, setTargetConfig] = useState<TargetConfig | null>(null);
+  const [targetStatus, setTargetStatus] = useState<TargetStatus>("unavailable");
+  const syncStatusRequestId = useRef(0);
 
   const filteredRepositories = useMemo(() => {
     const query = repoSearchQuery.trim().toLowerCase();
@@ -446,6 +477,78 @@ export default function ConnectRepositoriesPage() {
     }
   }
 
+  async function loadTargetConfig(repoFullName: string, branchName: string) {
+    try {
+      const response = await fetch(
+        `/api/github/repositories/config?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}`,
+      );
+      const data = (await response.json()) as BlogexConfigResponse;
+
+      if (!response.ok || !data.exists || !data.config) {
+        setTargetConfig(null);
+        setTargetStatus("unavailable");
+        return null;
+      }
+
+      const nextConfig: TargetConfig = {
+        targetRepo: data.config.targetRepo?.trim() ?? "",
+        targetBranch: data.config.targetBranch?.trim() ?? "",
+        targetDirectory: data.config.targetDirectory?.trim() || "_posts",
+      };
+
+      if (!nextConfig.targetRepo || !nextConfig.targetBranch) {
+        setTargetConfig(null);
+        setTargetStatus("unavailable");
+        return null;
+      }
+
+      setTargetConfig(nextConfig);
+      return nextConfig;
+    } catch {
+      setTargetConfig(null);
+      setTargetStatus("error");
+      return null;
+    }
+  }
+
+  async function checkTargetStatus(
+    filePath: string,
+    configOverride?: TargetConfig | null,
+  ) {
+    const config = configOverride ?? targetConfig;
+
+    if (!config || !filePath) {
+      setTargetStatus("unavailable");
+      return;
+    }
+
+    const requestId = syncStatusRequestId.current + 1;
+    syncStatusRequestId.current = requestId;
+    setTargetStatus("checking");
+
+    try {
+      const response = await fetch(
+        `/api/github/repositories/sync/status?targetRepo=${encodeURIComponent(config.targetRepo)}&targetBranch=${encodeURIComponent(config.targetBranch)}&targetDirectory=${encodeURIComponent(config.targetDirectory)}&sourcePath=${encodeURIComponent(filePath)}`,
+      );
+      const data = (await response.json()) as SyncStatusResponse;
+
+      if (syncStatusRequestId.current !== requestId) {
+        return;
+      }
+
+      if (!response.ok) {
+        setTargetStatus(data.error ? "error" : "unavailable");
+        return;
+      }
+
+      setTargetStatus(data.exists ? "exists" : "missing");
+    } catch {
+      if (syncStatusRequestId.current === requestId) {
+        setTargetStatus("error");
+      }
+    }
+  }
+
   useEffect(() => {
     void loadAllRepositories();
 
@@ -585,6 +688,13 @@ export default function ConnectRepositoriesPage() {
     }
 
     setStep("explorer");
+
+    const config = await loadTargetConfig(selectedRepo, selectedBranch);
+    if (loadedFiles.length > 0) {
+      await checkTargetStatus(loadedFiles[0].path, config);
+    } else {
+      setTargetStatus("unavailable");
+    }
   }
 
   async function handleOpenFile(file: PostFile) {
@@ -594,6 +704,7 @@ export default function ConnectRepositoriesPage() {
     }
 
     await loadMarkdownFile(selectedRepo, selectedBranch, file.path);
+    await checkTargetStatus(file.path);
   }
 
   async function handleSaveMarkdown() {
@@ -684,6 +795,91 @@ export default function ConnectRepositoriesPage() {
     } finally {
       setIsCreatingMarkdown(false);
     }
+  }
+
+  useEffect(() => {
+    if (step !== "explorer" || !selectedRepo || !selectedBranch) {
+      return;
+    }
+
+    void loadTargetConfig(selectedRepo, selectedBranch);
+  }, [step, selectedRepo, selectedBranch]);
+
+  useEffect(() => {
+    if (step !== "explorer" || !selectedPostPath) {
+      return;
+    }
+
+    void checkTargetStatus(selectedPostPath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, selectedPostPath, targetConfig]);
+
+  function renderTargetStatusIcon() {
+    if (targetStatus === "checking") {
+      return (
+        <span
+          title="Checking target status"
+          aria-label="Checking target status"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/20 text-zinc-300"
+        >
+          <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent" />
+        </span>
+      );
+    }
+
+    if (targetStatus === "exists") {
+      return (
+        <span
+          title="Exists in target repo"
+          aria-label="Exists in target repo"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-300/60 bg-emerald-400/20 text-emerald-200"
+        >
+          <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current" aria-hidden="true">
+            <path d="M6.4 11.2 3.2 8l1.1-1.1 2.1 2.1 5.3-5.3L12.8 4z" />
+          </svg>
+        </span>
+      );
+    }
+
+    if (targetStatus === "missing") {
+      return (
+        <span
+          title="Not found in target repo"
+          aria-label="Not found in target repo"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-300/60 bg-blue-400/15 text-blue-200"
+        >
+          <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current" aria-hidden="true">
+            <path d="M7 3h2v4h4v2H9v4H7V9H3V7h4z" />
+          </svg>
+        </span>
+      );
+    }
+
+    if (targetStatus === "error") {
+      return (
+        <span
+          title="Failed to check target status"
+          aria-label="Failed to check target status"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-rose-300/60 bg-rose-400/15 text-rose-200"
+        >
+          <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current" aria-hidden="true">
+            <path d="M8 1 1 14h14L8 1zm1 10H7V6h2v5zm0 3H7v-2h2v2z" />
+          </svg>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        title="Target status unavailable"
+        aria-label="Target status unavailable"
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-zinc-400"
+      >
+        <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current" aria-hidden="true">
+          <circle cx="8" cy="8" r="3" />
+        </svg>
+      </span>
+    );
   }
 
   return (
@@ -954,9 +1150,12 @@ export default function ConnectRepositoriesPage() {
 
               <div className="min-h-[300px] rounded-xl border border-white/15 bg-zinc-900/60">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                  <p className="text-sm text-zinc-200">
-                    {selectedPostName || "Markdown editor"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-zinc-200">
+                      {selectedPostName || "Markdown editor"}
+                    </p>
+                    {selectedPostPath ? renderTargetStatusIcon() : null}
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg border border-white/15 bg-white/10 p-1">
                       <button
