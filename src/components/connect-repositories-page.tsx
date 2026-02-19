@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import matter from "gray-matter";
-import remarkGfm from "remark-gfm";
-import FileSyncStatus, {
-  type FileSyncStatusValue,
-} from "@/components/file-sync-status";
+import type { FileSyncStatusValue } from "@/components/file-sync-status";
+import BranchStep from "@/components/workspace/branch-step";
+import ExplorerStep from "@/components/workspace/explorer-step";
+import RepositoryStep from "@/components/workspace/repository-step";
 import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
 import {
@@ -788,307 +787,64 @@ export default function ConnectRepositoriesPage() {
         ) : null}
 
         {step === "repository" ? (
-          <div className="mt-6">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-              Repository
-            </p>
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                type="text"
-                value={repoSearchQuery}
-                onChange={(event) => setRepoSearchQuery(event.target.value)}
-                placeholder="Search repositories"
-                className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-              />
-              <button
-                type="button"
-                onClick={() => void handleRefreshRepositories()}
-                disabled={isLoadingRepositories}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60 sm:shrink-0"
-              >
-                {isLoadingRepositories ? "Refreshing..." : "Refresh"}
-              </button>
-            </div>
-            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
-              {isLoadingRepositories ? (
-                <p className="px-3 py-2 text-sm text-zinc-300">
-                  Loading repositories...
-                </p>
-              ) : filteredRepositories.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-zinc-300">
-                  No repositories match your search
-                </p>
-              ) : (
-                filteredRepositories.map((repo) => {
-                  const isSelected = selectedRepo === repo.fullName;
-
-                  return (
-                    <button
-                      key={repo.id}
-                      type="button"
-                      onClick={() => setSelectedRepo(repo.fullName)}
-                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                        isSelected
-                          ? "border-white/45 bg-white/15 text-white"
-                          : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
-                      }`}
-                    >
-                      <span className="truncate pr-3">{repo.fullName}</span>
-                      <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-300">
-                        {repo.private ? "Private" : "Public"}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            <p className="mt-4 text-xs text-zinc-400">
-              Loaded {repositories.length} repositories
-              {totalPages ? ` across ${totalPages} pages` : ""}.
-            </p>
-            <button
-              type="button"
-              onClick={() => void handleNextToBranches()}
-              disabled={isLoadingRepositories || !selectedRepo || isLoadingBranches}
-              className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoadingBranches ? "Loading branches..." : "Next"}
-            </button>
-          </div>
+          <RepositoryStep
+            repoSearchQuery={repoSearchQuery}
+            onRepoSearchChange={setRepoSearchQuery}
+            onRefresh={() => void handleRefreshRepositories()}
+            isLoadingRepositories={isLoadingRepositories}
+            filteredRepositories={filteredRepositories}
+            selectedRepo={selectedRepo}
+            onSelectRepo={setSelectedRepo}
+            loadedRepositoryCount={repositories.length}
+            totalPages={totalPages}
+            onNext={() => void handleNextToBranches()}
+            isLoadingBranches={isLoadingBranches}
+          />
         ) : null}
 
         {step === "branch" ? (
-          <div className="mt-6">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-300">
-                Branch
-              </p>
-              <button
-                type="button"
-                onClick={() => setStep("repository")}
-                className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
-              >
-                Change repo
-              </button>
-            </div>
-            <p className="mb-3 text-xs text-zinc-400">Selected: {selectedRepo}</p>
-            <input
-              type="text"
-              value={branchSearchQuery}
-              onChange={(event) => setBranchSearchQuery(event.target.value)}
-              placeholder="Search branches"
-              className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-            />
-            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
-              {isLoadingBranches ? (
-                <p className="px-3 py-2 text-sm text-zinc-300">Loading branches...</p>
-              ) : filteredBranches.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-zinc-300">
-                  No branches match your search
-                </p>
-              ) : (
-                filteredBranches.map((branch) => {
-                  const isSelected = selectedBranch === branch.name;
-
-                  return (
-                    <button
-                      key={branch.name}
-                      type="button"
-                      onClick={() => setSelectedBranch(branch.name)}
-                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                        isSelected
-                          ? "border-white/45 bg-white/15 text-white"
-                          : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
-                      }`}
-                    >
-                      <span className="truncate pr-3">{branch.name}</span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => void handleConnectToExplorer()}
-              disabled={isLoadingBranches || !selectedBranch || isLoadingPosts}
-              className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoadingPosts ? "Loading _posts..." : "Connect"}
-            </button>
-          </div>
+          <BranchStep
+            selectedRepo={selectedRepo}
+            branchSearchQuery={branchSearchQuery}
+            onBranchSearchChange={setBranchSearchQuery}
+            isLoadingBranches={isLoadingBranches}
+            filteredBranches={filteredBranches}
+            selectedBranch={selectedBranch}
+            onSelectBranch={setSelectedBranch}
+            onChangeRepo={() => setStep("repository")}
+            onConnect={() => void handleConnectToExplorer()}
+            isLoadingPosts={isLoadingPosts}
+          />
         ) : null}
 
         {step === "explorer" ? (
-          <div className="mt-6">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStep("branch")}
-                className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
-              >
-                Change branch
-              </button>
-              <p className="text-xs text-zinc-400">
-                Repo: {selectedRepo} | Branch: {selectedBranch}
-              </p>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-[300px_1fr]">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-                  _posts
-                </p>
-                <div className="mb-3 flex gap-2">
-                  <input
-                    type="text"
-                    value={newMarkdownTitle}
-                    onChange={(event) => setNewMarkdownTitle(event.target.value)}
-                    placeholder="My New Post"
-                    className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleCreateMarkdownFile()}
-                    disabled={isCreatingMarkdown || !newMarkdownTitle.trim()}
-                    className="shrink-0 rounded-xl border border-white/15 bg-white/95 px-3 py-2.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isCreatingMarkdown ? "Creating..." : "Create"}
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={postSearchQuery}
-                  onChange={(event) => setPostSearchQuery(event.target.value)}
-                  placeholder="Search markdown files"
-                  className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-                />
-                <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
-                  {isLoadingPosts ? (
-                    <p className="px-3 py-2 text-sm text-zinc-300">
-                      Loading markdown files...
-                    </p>
-                  ) : filteredPostFiles.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-zinc-300">
-                      No markdown files found in _posts
-                    </p>
-                  ) : (
-                    filteredPostFiles.map((file) => {
-                      const isSelected = selectedPostPath === file.path;
-
-                      return (
-                        <button
-                          key={file.path}
-                          type="button"
-                          onClick={() => void handleOpenFile(file)}
-                          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                            isSelected
-                              ? "border-white/45 bg-white/15 text-white"
-                              : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
-                          }`}
-                        >
-                          <span className="truncate pr-3">{file.name}</span>
-                          <span className="shrink-0 text-[11px] text-zinc-400">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="min-h-[300px] rounded-xl border border-white/15 bg-zinc-900/60">
-                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-zinc-200">
-                      {selectedPostName || "Markdown editor"}
-                    </p>
-                    {selectedPostPath ? <FileSyncStatus status={targetStatus} /> : null}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-lg border border-white/15 bg-white/10 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditorView("edit")}
-                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                          editorView === "edit"
-                            ? "bg-white text-zinc-900"
-                            : "text-zinc-200 hover:bg-white/15"
-                        }`}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditorView("preview")}
-                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                          editorView === "preview"
-                            ? "bg-white text-zinc-900"
-                            : "text-zinc-200 hover:bg-white/15"
-                        }`}
-                      >
-                        Preview
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveMarkdown()}
-                      disabled={
-                        !selectedPostPath ||
-                        isLoadingMarkdown ||
-                        isSavingMarkdown ||
-                        editorContent === markdownContent
-                      }
-                      className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isSavingMarkdown ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-[420px] overflow-auto px-4 py-3">
-                  {isLoadingMarkdown ? (
-                    <p className="text-sm text-zinc-300">Loading file content...</p>
-                  ) : selectedPostPath && editorView === "edit" ? (
-                    <textarea
-                      value={editorContent}
-                      onChange={(event) => setEditorContent(event.target.value)}
-                      className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
-                    />
-                  ) : selectedPostPath && editorView === "preview" ? (
-                    <div className="markdown-preview text-sm leading-6 text-zinc-100">
-                      {frontmatterEntries.length > 0 ? (
-                        <div className="mb-4 rounded-lg border border-white/15 bg-zinc-950/80 p-3">
-                          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-                            Front Matter
-                          </p>
-                          <div className="space-y-1 text-xs text-zinc-200">
-                            {frontmatterEntries.map(([key, value]) => (
-                              <p key={key}>
-                                <span className="text-zinc-400">{key}:</span>{" "}
-                                <span className="font-mono">
-                                  {typeof value === "string"
-                                    ? value
-                                    : JSON.stringify(value)}
-                                </span>
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {parsedEditorMarkdown.body}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-zinc-300">
-                      Select a markdown file to view its content.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <ExplorerStep
+            selectedRepo={selectedRepo}
+            selectedBranch={selectedBranch}
+            onChangeBranch={() => setStep("branch")}
+            newMarkdownTitle={newMarkdownTitle}
+            onNewMarkdownTitleChange={setNewMarkdownTitle}
+            onCreateMarkdown={() => void handleCreateMarkdownFile()}
+            isCreatingMarkdown={isCreatingMarkdown}
+            postSearchQuery={postSearchQuery}
+            onPostSearchChange={setPostSearchQuery}
+            isLoadingPosts={isLoadingPosts}
+            filteredPostFiles={filteredPostFiles}
+            selectedPostPath={selectedPostPath}
+            onOpenFile={(file) => void handleOpenFile(file)}
+            selectedPostName={selectedPostName}
+            targetStatus={targetStatus}
+            editorView={editorView}
+            onEditorViewChange={setEditorView}
+            onSaveMarkdown={() => void handleSaveMarkdown()}
+            isLoadingMarkdown={isLoadingMarkdown}
+            isSavingMarkdown={isSavingMarkdown}
+            markdownContent={markdownContent}
+            editorContent={editorContent}
+            onEditorContentChange={setEditorContent}
+            frontmatterEntries={frontmatterEntries}
+            parsedEditorBody={parsedEditorMarkdown.body}
+          />
         ) : null}
 
         {message ? <p className="mt-4 text-sm text-zinc-200">{message}</p> : null}
