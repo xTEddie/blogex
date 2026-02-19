@@ -45,6 +45,12 @@ type MarkdownContentResponse = {
   error?: string;
 };
 
+type SaveMarkdownResponse = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+};
+
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -55,6 +61,7 @@ export default function ConnectRepositoriesPage() {
   const [selectedPostPath, setSelectedPostPath] = useState("");
   const [selectedPostName, setSelectedPostName] = useState("");
   const [markdownContent, setMarkdownContent] = useState("");
+  const [editorContent, setEditorContent] = useState("");
 
   const [step, setStep] = useState<"repository" | "branch" | "explorer">(
     "repository",
@@ -64,6 +71,7 @@ export default function ConnectRepositoriesPage() {
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
+  const [isSavingMarkdown, setIsSavingMarkdown] = useState(false);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
@@ -144,6 +152,7 @@ export default function ConnectRepositoriesPage() {
       setSelectedPostPath("");
       setSelectedPostName("");
       setMarkdownContent("");
+      setEditorContent("");
     } catch {
       setRepositories([]);
       setMessage("Request failed while loading repositories.");
@@ -232,11 +241,13 @@ export default function ConnectRepositoriesPage() {
       }
 
       setMarkdownContent(data.markdown ?? "");
+      setEditorContent(data.markdown ?? "");
       setSelectedPostPath(data.path ?? filePath);
       setSelectedPostName(data.name ?? filePath.split("/").pop() ?? filePath);
     } catch {
       setMessage("Request failed while loading markdown content.");
       setMarkdownContent("");
+      setEditorContent("");
     } finally {
       setIsLoadingMarkdown(false);
     }
@@ -306,6 +317,7 @@ export default function ConnectRepositoriesPage() {
       await loadMarkdownFile(selectedRepo, selectedBranch, loadedFiles[0].path);
     } else {
       setMarkdownContent("");
+      setEditorContent("");
     }
 
     setStep("explorer");
@@ -318,6 +330,45 @@ export default function ConnectRepositoriesPage() {
     }
 
     await loadMarkdownFile(selectedRepo, selectedBranch, file.path);
+  }
+
+  async function handleSaveMarkdown() {
+    if (!selectedRepo || !selectedBranch || !selectedPostPath) {
+      setMessage("Select a markdown file before saving.");
+      return;
+    }
+
+    setIsSavingMarkdown(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/github/repositories/posts/content", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          repo: selectedRepo,
+          branch: selectedBranch,
+          path: selectedPostPath,
+          markdown: editorContent,
+          message: `chore: update ${selectedPostName}`,
+        }),
+      });
+
+      const data = (await response.json()) as SaveMarkdownResponse;
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to save markdown file.");
+        return;
+      }
+
+      setMarkdownContent(editorContent);
+      setMessage(data.message ?? "Saved successfully.");
+    } catch {
+      setMessage("Request failed while saving markdown file.");
+    } finally {
+      setIsSavingMarkdown(false);
+    }
   }
 
   return (
@@ -527,16 +578,33 @@ export default function ConnectRepositoriesPage() {
               </div>
 
               <div className="min-h-[300px] rounded-xl border border-white/15 bg-zinc-900/60">
-                <div className="border-b border-white/10 px-4 py-3 text-sm text-zinc-200">
-                  {selectedPostName || "Markdown preview"}
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                  <p className="text-sm text-zinc-200">
+                    {selectedPostName || "Markdown editor"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveMarkdown()}
+                    disabled={
+                      !selectedPostPath ||
+                      isLoadingMarkdown ||
+                      isSavingMarkdown ||
+                      editorContent === markdownContent
+                    }
+                    className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingMarkdown ? "Saving..." : "Save"}
+                  </button>
                 </div>
                 <div className="max-h-[420px] overflow-auto px-4 py-3">
                   {isLoadingMarkdown ? (
                     <p className="text-sm text-zinc-300">Loading file content...</p>
-                  ) : markdownContent ? (
-                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-100">
-                      {markdownContent}
-                    </pre>
+                  ) : selectedPostPath ? (
+                    <textarea
+                      value={editorContent}
+                      onChange={(event) => setEditorContent(event.target.value)}
+                      className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
+                    />
                   ) : (
                     <p className="text-sm text-zinc-300">
                       Select a markdown file to view its content.
