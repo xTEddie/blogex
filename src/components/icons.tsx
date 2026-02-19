@@ -49,3 +49,11 @@ export function RenameIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function CompareIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <path d="M2 3h6v2H4v2H2V3zm0 6h2v2h4v2H2V9zm12-6v4h-2V5H8V3h6zm0 6v4H8v-2h4V9h2z" />
+    </svg>
+  );
+}

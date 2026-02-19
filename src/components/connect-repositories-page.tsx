@@ -12,6 +12,7 @@ import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-sessi
 import { normalizeMarkdownFileName } from "@/lib/markdown-post";
 import {
   createMarkdownFile,
+  fetchMarkdownSyncDiff,
   fetchMarkdownContent,
   fetchRepositoriesPage,
   fetchRepositoryBranches,
@@ -23,6 +24,7 @@ import {
   type Branch,
   type PostFile,
   type Repository,
+  type SyncCompareStatus,
 } from "@/lib/workspace-client";
 
 type TargetConfig = {
@@ -76,6 +78,13 @@ export default function ConnectRepositoriesPage() {
   const [isCreatingMarkdown, setIsCreatingMarkdown] = useState(false);
   const [isRenamingMarkdown, setIsRenamingMarkdown] = useState(false);
   const [isRenameEditorOpen, setIsRenameEditorOpen] = useState(false);
+  const [isComparingMarkdown, setIsComparingMarkdown] = useState(false);
+  const [isComparePanelOpen, setIsComparePanelOpen] = useState(false);
+  const [compareStatus, setCompareStatus] = useState<
+    SyncCompareStatus | "idle" | "error"
+  >("idle");
+  const [compareDiff, setCompareDiff] = useState("");
+  const [compareMessage, setCompareMessage] = useState<string | null>(null);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
@@ -258,6 +267,10 @@ export default function ConnectRepositoriesPage() {
       setEditorContent("");
       setEditorView("edit");
       setIsRenameEditorOpen(false);
+      setIsComparePanelOpen(false);
+      setCompareStatus("idle");
+      setCompareDiff("");
+      setCompareMessage(null);
 
       if (!restoredState?.selectedRepo) {
         return;
@@ -372,6 +385,10 @@ export default function ConnectRepositoriesPage() {
       setSelectedPostName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
       setRenameFileName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
       setIsRenameEditorOpen(false);
+      setIsComparePanelOpen(false);
+      setCompareStatus("idle");
+      setCompareDiff("");
+      setCompareMessage(null);
       return fetchedFiles;
     } catch {
       setPostFiles([]);
@@ -407,12 +424,20 @@ export default function ConnectRepositoriesPage() {
       setRenameFileName(data.name ?? filePath.split("/").pop() ?? filePath);
       setEditorView("edit");
       setIsRenameEditorOpen(false);
+      setIsComparePanelOpen(false);
+      setCompareStatus("idle");
+      setCompareDiff("");
+      setCompareMessage(null);
     } catch {
       setMessage("Request failed while loading markdown content.");
       setMarkdownContent("");
       setEditorContent("");
       setRenameFileName("");
       setIsRenameEditorOpen(false);
+      setIsComparePanelOpen(false);
+      setCompareStatus("idle");
+      setCompareDiff("");
+      setCompareMessage(null);
     } finally {
       setIsLoadingMarkdown(false);
     }
@@ -788,6 +813,69 @@ export default function ConnectRepositoriesPage() {
     }
   }
 
+  async function handleCompareMarkdown() {
+    if (!selectedRepo || !selectedBranch || !selectedPostPath) {
+      setMessage("Select a markdown file before comparing.");
+      return;
+    }
+
+    if (!targetConfig) {
+      setIsComparePanelOpen(true);
+      setCompareStatus("error");
+      setCompareDiff("");
+      setCompareMessage(
+        "Target repository is not configured. Update workspace settings first.",
+      );
+      return;
+    }
+
+    setIsComparingMarkdown(true);
+    setCompareMessage(null);
+
+    try {
+      const result = await fetchMarkdownSyncDiff({
+        sourceRepo: selectedRepo,
+        sourceBranch: selectedBranch,
+        sourcePath: selectedPostPath,
+        targetRepo: targetConfig.targetRepo,
+        targetBranch: targetConfig.targetBranch,
+        targetDirectory: targetConfig.targetDirectory,
+      });
+
+      setIsComparePanelOpen(true);
+
+      if (!result.ok) {
+        setCompareStatus("error");
+        setCompareDiff("");
+        setCompareMessage(result.error);
+        return;
+      }
+
+      const data = result.data;
+      const status = data.status ?? "error";
+
+      if (status === "same") {
+        setCompareMessage("Source and target files are identical.");
+      } else if (status === "missing_target") {
+        setCompareMessage("Target file does not exist yet.");
+      } else if (status === "missing_source") {
+        setCompareMessage("Source file is missing.");
+      } else {
+        setCompareMessage(null);
+      }
+
+      setCompareStatus(status);
+      setCompareDiff(data.diff ?? "");
+    } catch {
+      setIsComparePanelOpen(true);
+      setCompareStatus("error");
+      setCompareDiff("");
+      setCompareMessage("Request failed while comparing markdown files.");
+    } finally {
+      setIsComparingMarkdown(false);
+    }
+  }
+
   useEffect(() => {
     if (step !== "explorer" || !selectedRepo || !selectedBranch) {
       return;
@@ -925,6 +1013,13 @@ export default function ConnectRepositoriesPage() {
                 normalizeMarkdownFileName(selectedPostName)
             }
             isRenamingMarkdown={isRenamingMarkdown}
+            onCompareMarkdown={() => void handleCompareMarkdown()}
+            isComparingMarkdown={isComparingMarkdown}
+            isComparePanelOpen={isComparePanelOpen}
+            onCloseComparePanel={() => setIsComparePanelOpen(false)}
+            compareStatus={compareStatus}
+            compareDiff={compareDiff}
+            compareMessage={compareMessage}
             targetStatus={targetStatus}
             editorView={editorView}
             onEditorViewChange={setEditorView}

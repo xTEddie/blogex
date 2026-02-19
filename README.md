@@ -143,3 +143,14 @@ Most routes require an authenticated session cookie: `gh_oauth_token`.
   - `targetDirectory` (optional, default `_posts`): directory in target repo.
   - `sourcePath` (required): selected source markdown path.
 - Body: none.
+
+#### `GET /api/github/repositories/sync/compare`
+- Description: Compares selected source markdown with mapped target markdown and returns status + unified diff.
+- Query params:
+  - `sourceRepo` (required): `owner/name`.
+  - `sourceBranch` (required): source branch.
+  - `sourcePath` (required): source markdown path.
+  - `targetRepo` (required): `owner/name`.
+  - `targetBranch` (required): target branch.
+  - `targetDirectory` (optional, default `_posts`): target directory used to map filename.
+- Body: none.

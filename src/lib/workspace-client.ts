@@ -103,6 +103,20 @@ export type SyncStatusResponse = {
   error?: string;
 };
 
+export type SyncCompareStatus =
+  | "same"
+  | "different"
+  | "missing_target"
+  | "missing_source";
+
+export type SyncCompareResponse = {
+  status?: SyncCompareStatus;
+  sourcePath?: string;
+  targetPath?: string;
+  diff?: string;
+  error?: string;
+};
+
 /** Fetch one page of blogex repositories for the authenticated user. */
 export async function fetchRepositoriesPage(page: number, perPage: number) {
   const response = await fetch(
@@ -397,6 +411,33 @@ export async function fetchTargetFileSyncStatus(payload: {
     return {
       ok: false as const,
       error: data.error ?? "Failed to check target sync status.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    data,
+  };
+}
+
+/** Compare selected markdown with the mapped target markdown content. */
+export async function fetchMarkdownSyncDiff(payload: {
+  sourceRepo: string;
+  sourceBranch: string;
+  sourcePath: string;
+  targetRepo: string;
+  targetBranch: string;
+  targetDirectory: string;
+}) {
+  const response = await fetch(
+    `/api/github/repositories/sync/compare?sourceRepo=${encodeURIComponent(payload.sourceRepo)}&sourceBranch=${encodeURIComponent(payload.sourceBranch)}&sourcePath=${encodeURIComponent(payload.sourcePath)}&targetRepo=${encodeURIComponent(payload.targetRepo)}&targetBranch=${encodeURIComponent(payload.targetBranch)}&targetDirectory=${encodeURIComponent(payload.targetDirectory)}`,
+  );
+
+  const data = (await response.json()) as SyncCompareResponse;
+  if (!response.ok) {
+    return {
+      ok: false as const,
+      error: data.error ?? "Failed to compare markdown files.",
     };
   }
 

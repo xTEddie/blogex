@@ -1,8 +1,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import FileSyncStatus, { type FileSyncStatusValue } from "@/components/file-sync-status";
-import { RenameIcon, SaveIcon } from "@/components/icons";
-import { type PostFile } from "@/lib/workspace-client";
+import { CompareIcon, RenameIcon, SaveIcon } from "@/components/icons";
+import { type PostFile, type SyncCompareStatus } from "@/lib/workspace-client";
 
 type ExplorerStepProps = {
   selectedRepo: string;
@@ -27,6 +27,13 @@ type ExplorerStepProps = {
   onRenameMarkdown: () => void;
   isRenameSaveDisabled: boolean;
   isRenamingMarkdown: boolean;
+  onCompareMarkdown: () => void;
+  isComparingMarkdown: boolean;
+  isComparePanelOpen: boolean;
+  onCloseComparePanel: () => void;
+  compareStatus: SyncCompareStatus | "idle" | "error";
+  compareDiff: string;
+  compareMessage: string | null;
   targetStatus: FileSyncStatusValue;
   editorView: "edit" | "preview";
   onEditorViewChange: (view: "edit" | "preview") => void;
@@ -63,6 +70,13 @@ export default function ExplorerStep({
   onRenameMarkdown,
   isRenameSaveDisabled,
   isRenamingMarkdown,
+  onCompareMarkdown,
+  isComparingMarkdown,
+  isComparePanelOpen,
+  onCloseComparePanel,
+  compareStatus,
+  compareDiff,
+  compareMessage,
   targetStatus,
   editorView,
   onEditorViewChange,
@@ -167,6 +181,20 @@ export default function ExplorerStep({
               >
                 <RenameIcon className="h-3.5 w-3.5 fill-current" />
               </button>
+              <button
+                type="button"
+                onClick={onCompareMarkdown}
+                disabled={!selectedPostPath || isComparingMarkdown}
+                title={isComparingMarkdown ? "Comparing" : "Compare with target"}
+                aria-label={isComparingMarkdown ? "Comparing" : "Compare with target"}
+                className="shrink-0 rounded-md border border-white/15 bg-white/10 px-1.5 py-1 text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isComparingMarkdown ? (
+                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-300 border-t-transparent" />
+                ) : (
+                  <CompareIcon className="h-3.5 w-3.5 fill-current" />
+                )}
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <div className="rounded-lg border border-white/15 bg-white/10 p-1">
@@ -246,6 +274,69 @@ export default function ExplorerStep({
               >
                 Cancel
               </button>
+            </div>
+          ) : null}
+          {isComparePanelOpen ? (
+            <div className="border-b border-white/10 px-4 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span
+                  className={`rounded-md border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
+                    compareStatus === "same"
+                      ? "border-emerald-300/50 bg-emerald-400/20 text-emerald-200"
+                      : compareStatus === "different"
+                        ? "border-amber-300/50 bg-amber-400/20 text-amber-200"
+                        : compareStatus === "missing_target" ||
+                            compareStatus === "missing_source"
+                          ? "border-zinc-300/30 bg-zinc-500/20 text-zinc-200"
+                          : compareStatus === "error"
+                            ? "border-rose-300/50 bg-rose-400/20 text-rose-200"
+                            : "border-white/20 bg-white/10 text-zinc-200"
+                  }`}
+                >
+                  {compareStatus === "same"
+                    ? "Same"
+                    : compareStatus === "different"
+                      ? "Different"
+                      : compareStatus === "missing_target"
+                        ? "Missing Target"
+                        : compareStatus === "missing_source"
+                          ? "Missing Source"
+                          : compareStatus === "error"
+                            ? "Error"
+                            : "Not Compared"}
+                </span>
+                <button
+                  type="button"
+                  onClick={onCloseComparePanel}
+                  className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
+                >
+                  Hide
+                </button>
+              </div>
+
+              {compareMessage ? (
+                <p className="mb-2 text-xs text-zinc-300">{compareMessage}</p>
+              ) : null}
+
+              {compareDiff ? (
+                <div className="max-h-44 overflow-auto rounded-lg border border-white/15 bg-zinc-950/80 p-2 font-mono text-xs">
+                  {compareDiff.split("\n").map((line, index) => {
+                    const lineClass = line.startsWith("+")
+                      ? "bg-emerald-500/10 text-emerald-200"
+                      : line.startsWith("-")
+                        ? "bg-rose-500/10 text-rose-200"
+                        : line.startsWith("@@")
+                          ? "bg-amber-500/10 text-amber-200"
+                          : "text-zinc-300";
+
+                    return (
+                      <p key={`${line}-${index}`} className={`whitespace-pre-wrap px-1 ${lineClass}`}>
+                        {line || " "}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="max-h-[420px] overflow-auto px-4 py-3">
