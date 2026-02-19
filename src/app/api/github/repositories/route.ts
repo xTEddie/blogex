@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { clearAuthCookies } from "@/lib/auth-cookies";
 import {
+  buildRepositoryConfigContent,
   getRepositoryInitTemplatePath,
+  REPOSITORY_CONFIG_COMMIT_MESSAGE,
+  REPOSITORY_CONFIG_FILE_PATH,
   REPOSITORY_INIT_COMMIT_MESSAGE,
   REPOSITORY_INIT_TARGET_FILE_PATH,
 } from "@/lib/repository-init-config";
@@ -202,10 +205,50 @@ export async function POST(request: NextRequest) {
 
   const owner = githubData.owner?.login;
   const repositoryName = githubData.name;
+  let configInitialized = false;
   let postsInitialized = false;
   let warning: string | undefined;
 
   if (owner && repositoryName) {
+    const blogexConfigResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repositoryName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "blogex",
+        },
+        body: JSON.stringify({
+          message: REPOSITORY_CONFIG_COMMIT_MESSAGE,
+          content: Buffer.from(buildRepositoryConfigContent(owner)).toString(
+            "base64",
+          ),
+        }),
+        cache: "no-store",
+      },
+    );
+
+    configInitialized = blogexConfigResponse.ok;
+
+    if (!blogexConfigResponse.ok) {
+      const configError = (await blogexConfigResponse.json()) as {
+        message?: string;
+      };
+      if (blogexConfigResponse.status === 401) {
+        const response = NextResponse.json(
+          { error: configError.message ?? "GitHub token is no longer valid." },
+          { status: 401 },
+        );
+        return clearAuthCookies(response);
+      }
+      warning =
+        configError.message ??
+        "Repository was created but blogex.config.json initialization failed.";
+    }
+
     const createPostsDirectoryResponse = await fetch(
       `https://api.github.com/repos/${owner}/${repositoryName}/contents/${REPOSITORY_INIT_TARGET_FILE_PATH}`,
       {
@@ -239,7 +282,9 @@ export async function POST(request: NextRequest) {
         return clearAuthCookies(response);
       }
       warning =
-        postsError.message ?? "Repository was created but _posts initialization failed.";
+        warning ??
+        postsError.message ??
+        "Repository was created but _posts initialization failed.";
     }
   } else {
     warning = "Repository was created but _posts initialization metadata was missing.";
@@ -249,6 +294,7 @@ export async function POST(request: NextRequest) {
     {
       success: true,
       url: githubData.html_url,
+      configInitialized,
       postsInitialized,
       warning,
     },
