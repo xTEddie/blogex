@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import CreateRepositoryForm from "@/components/create-repository-form";
 
 type GithubUser = {
   name: string | null;
@@ -45,6 +46,7 @@ export default async function UserPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-white">
           Welcome, {user.name ?? user.login}
         </h1>
+        <CreateRepositoryForm />
         <form action="/api/auth/logout" method="post" className="mt-8">
           <button
             type="submit"
