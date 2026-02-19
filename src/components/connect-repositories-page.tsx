@@ -54,6 +54,15 @@ type SaveMarkdownResponse = {
   error?: string;
 };
 
+type CreateMarkdownResponse = {
+  success?: boolean;
+  path?: string;
+  name?: string;
+  markdown?: string;
+  message?: string;
+  error?: string;
+};
+
 type PersistedConnectState = {
   selectedRepo?: string;
   selectedBranch?: string;
@@ -88,10 +97,12 @@ export default function ConnectRepositoriesPage() {
   const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const [isCreatingMarkdown, setIsCreatingMarkdown] = useState(false);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
   const [postSearchQuery, setPostSearchQuery] = useState("");
+  const [newMarkdownTitle, setNewMarkdownTitle] = useState("");
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [resumeState, setResumeState] = useState<PersistedConnectState | null>(
     null,
@@ -538,6 +549,57 @@ export default function ConnectRepositoriesPage() {
     }
   }
 
+  async function handleCreateMarkdownFile() {
+    if (!selectedRepo || !selectedBranch) {
+      setMessage("Select a repository and branch first.");
+      return;
+    }
+
+    const inputTitle = newMarkdownTitle.trim();
+    if (!inputTitle) {
+      setMessage("Enter a title first.");
+      return;
+    }
+
+    setIsCreatingMarkdown(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/github/repositories/posts/content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          repo: selectedRepo,
+          branch: selectedBranch,
+          title: inputTitle,
+        }),
+      });
+
+      const data = (await response.json()) as CreateMarkdownResponse;
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to create markdown file.");
+        return;
+      }
+
+      const refreshedFiles = await loadPostFiles(selectedRepo, selectedBranch);
+      if (refreshedFiles && data.path) {
+        const created = refreshedFiles.find((file) => file.path === data.path);
+        if (created) {
+          await handleOpenFile(created);
+        }
+      }
+
+      setNewMarkdownTitle("");
+      setMessage(data.message ?? "Markdown file created.");
+    } catch {
+      setMessage("Request failed while creating markdown file.");
+    } finally {
+      setIsCreatingMarkdown(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-8 sm:px-6">
       <section className="mx-auto w-full max-w-5xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
@@ -727,6 +789,23 @@ export default function ConnectRepositoriesPage() {
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
                   _posts
                 </p>
+                <div className="mb-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={newMarkdownTitle}
+                    onChange={(event) => setNewMarkdownTitle(event.target.value)}
+                    placeholder="My New Post"
+                    className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateMarkdownFile()}
+                    disabled={isCreatingMarkdown || !newMarkdownTitle.trim()}
+                    className="shrink-0 rounded-xl border border-white/15 bg-white/95 px-3 py-2.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isCreatingMarkdown ? "Creating..." : "Create"}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={postSearchQuery}

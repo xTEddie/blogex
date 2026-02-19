@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import {
+  buildInitialMarkdownFromTitle,
+  titleToMarkdownFileName,
+} from "@/lib/markdown-post";
 
 type GithubFileResponse = {
   type: "file";
@@ -14,6 +18,14 @@ type UpdateMarkdownPayload = {
   repo?: string;
   branch?: string;
   path?: string;
+  markdown?: string;
+  message?: string;
+};
+
+type CreateMarkdownPayload = {
+  repo?: string;
+  branch?: string;
+  title?: string;
   markdown?: string;
   message?: string;
 };
@@ -264,5 +276,136 @@ export async function PUT(request: NextRequest) {
       message: "Markdown file updated and committed.",
     },
     { status: 200 },
+  );
+}
+
+export async function POST(request: NextRequest) {
+  const token = request.cookies.get("gh_oauth_token")?.value;
+
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let payload: CreateMarkdownPayload;
+  try {
+    payload = (await request.json()) as CreateMarkdownPayload;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }
+
+  const repo = payload.repo?.trim();
+  const branch = payload.branch?.trim();
+  const title = payload.title?.trim() ?? "";
+  const normalizedFileName = titleToMarkdownFileName(title);
+  const filePath = normalizedFileName ? `_posts/${normalizedFileName}` : null;
+  const markdown =
+    typeof payload.markdown === "string"
+      ? payload.markdown
+      : buildInitialMarkdownFromTitle(title);
+  const commitMessage =
+    payload.message?.trim() || `chore: add ${normalizedFileName ?? "new post"}`;
+
+  if (!repo) {
+    return NextResponse.json(
+      { error: "Field `repo` must be in `owner/name` format." },
+      { status: 400 },
+    );
+  }
+
+  if (!branch) {
+    return NextResponse.json(
+      { error: "Field `branch` is required." },
+      { status: 400 },
+    );
+  }
+
+  if (!filePath || !validateMarkdownPath(filePath)) {
+    return NextResponse.json(
+      { error: "Field `title` must produce a valid markdown file name." },
+      { status: 400 },
+    );
+  }
+
+  const parsedRepo = parseRepository(repo);
+  if (!parsedRepo) {
+    return NextResponse.json(
+      { error: "Invalid repository format." },
+      { status: 400 },
+    );
+  }
+
+  const { owner, name } = parsedRepo;
+  const encodedPath = encodeContentPath(filePath);
+
+  const existingResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "blogex",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (existingResponse.status === 401) {
+    const errorData = (await existingResponse.json()) as { message?: string };
+    const response = NextResponse.json(
+      { error: errorData.message ?? "GitHub token is no longer valid." },
+      { status: 401 },
+    );
+    return clearAuthCookies(response);
+  }
+
+  if (existingResponse.status === 200) {
+    return NextResponse.json(
+      { error: "A markdown file with this name already exists." },
+      { status: 409 },
+    );
+  }
+
+  const createResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}`,
+    {
+      method: "PUT",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "blogex",
+      },
+      body: JSON.stringify({
+        message: commitMessage,
+        content: Buffer.from(markdown).toString("base64"),
+        branch,
+      }),
+      cache: "no-store",
+    },
+  );
+
+  if (!createResponse.ok) {
+    const errorData = (await createResponse.json()) as { message?: string };
+    const response = NextResponse.json(
+      { error: errorData.message ?? "Failed to create markdown file." },
+      { status: createResponse.status },
+    );
+    if (createResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
+  }
+
+  return NextResponse.json(
+    {
+      success: true,
+      path: filePath,
+      name: normalizedFileName,
+      markdown,
+      message: "Markdown file created and committed.",
+    },
+    { status: 201 },
   );
 }
