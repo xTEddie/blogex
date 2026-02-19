@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import matter from "gray-matter";
 import remarkGfm from "remark-gfm";
+import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
 
 type Repository = {
   id: number;
@@ -77,8 +78,6 @@ type RepositoryCacheState = {
   updatedAt: number;
 };
 
-const CONNECT_SESSION_KEY = "blogex:connect-session";
-const CONNECT_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
 const REPOSITORY_CACHE_KEY = "blogex:repositories-cache";
 const REPOSITORY_CACHE_TTL_MS = 1000 * 60 * 60 * 12;
 
@@ -694,12 +693,20 @@ export default function ConnectRepositoriesPage() {
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
             Workspace
           </h1>
-          <Link
-            href="/user"
-            className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
-          >
-            Back
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/workspace/settings"
+              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
+            >
+              Settings
+            </Link>
+            <Link
+              href="/user"
+              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
+            >
+              Back
+            </Link>
+          </div>
         </div>
 
         <p className="mt-2 text-sm text-zinc-300">
