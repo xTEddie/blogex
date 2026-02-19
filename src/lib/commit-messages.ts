@@ -1,4 +1,4 @@
-function withFallback(value: string | undefined, fallback: string) {
+function withFallback(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : fallback;
 }
@@ -15,7 +15,7 @@ export function createUpdateMarkdownCommitMessage(path?: string) {
   return `chore: update ${withFallback(path, "markdown file")}`;
 }
 
-export function createAddMarkdownCommitMessage(fileName?: string) {
+export function createAddMarkdownCommitMessage(fileName?: string | null) {
   return `chore: add ${withFallback(fileName, "new post")}`;
 }
 
@@ -26,4 +26,3 @@ export function createSyncMarkdownCommitMessage(fileName: string, sourceRepo: st
 export function createUpdateBlogexConfigCommitMessage() {
   return "chore: update blogex config";
 }
-
