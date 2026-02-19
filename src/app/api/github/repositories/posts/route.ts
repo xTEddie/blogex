@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clearAuthCookies } from "@/lib/auth-cookies";
 
 type GithubContentItem = {
   type: "file" | "dir";
@@ -59,10 +60,14 @@ export async function GET(request: NextRequest) {
 
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as { message?: string };
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorData.message ?? "Failed to fetch _posts directory." },
       { status: githubResponse.status },
     );
+    if (githubResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   const githubData = (await githubResponse.json()) as GithubContentItem[];

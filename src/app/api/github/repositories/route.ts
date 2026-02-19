@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { clearAuthCookies } from "@/lib/auth-cookies";
 
 type CreateRepositoryPayload = {
   name?: string;
@@ -94,10 +95,14 @@ export async function GET(request: NextRequest) {
 
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as { message?: string };
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorData.message ?? "Failed to fetch repositories." },
       { status: githubResponse.status },
     );
+    if (githubResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   const githubData = (await githubResponse.json()) as GithubRepository[];
@@ -186,10 +191,14 @@ export async function POST(request: NextRequest) {
     (await githubResponse.json()) as GithubCreateRepositoryResponse;
 
   if (!githubResponse.ok) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: githubData.message ?? "Failed to create repository." },
       { status: githubResponse.status },
     );
+    if (githubResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   const owner = githubData.owner?.login;
@@ -223,6 +232,13 @@ export async function POST(request: NextRequest) {
       const postsError = (await createPostsDirectoryResponse.json()) as {
         message?: string;
       };
+      if (createPostsDirectoryResponse.status === 401) {
+        const response = NextResponse.json(
+          { error: postsError.message ?? "GitHub token is no longer valid." },
+          { status: 401 },
+        );
+        return clearAuthCookies(response);
+      }
       warning =
         postsError.message ?? "Repository was created but _posts initialization failed.";
     }

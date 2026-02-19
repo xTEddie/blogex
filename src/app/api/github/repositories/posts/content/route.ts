@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clearAuthCookies } from "@/lib/auth-cookies";
 
 type GithubFileResponse = {
   type: "file";
@@ -99,10 +100,14 @@ export async function GET(request: NextRequest) {
 
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as { message?: string };
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorData.message ?? "Failed to fetch markdown content." },
       { status: githubResponse.status },
     );
+    if (githubResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   const githubData = (await githubResponse.json()) as GithubFileResponse;
@@ -201,10 +206,14 @@ export async function PUT(request: NextRequest) {
 
   if (!currentFileResponse.ok) {
     const errorData = (await currentFileResponse.json()) as { message?: string };
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorData.message ?? "Failed to fetch current file metadata." },
       { status: currentFileResponse.status },
     );
+    if (currentFileResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   const currentFile = (await currentFileResponse.json()) as GithubFileResponse;
@@ -238,10 +247,14 @@ export async function PUT(request: NextRequest) {
 
   if (!updateResponse.ok) {
     const errorData = (await updateResponse.json()) as { message?: string };
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: errorData.message ?? "Failed to update markdown file." },
       { status: updateResponse.status },
     );
+    if (updateResponse.status === 401) {
+      return clearAuthCookies(response);
+    }
+    return response;
   }
 
   return NextResponse.json(
