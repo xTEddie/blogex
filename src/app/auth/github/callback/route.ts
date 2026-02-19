@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const OAUTH_STATE_COOKIE = "gh_oauth_state";
 const OAUTH_TOKEN_COOKIE = "gh_oauth_token";
@@ -12,7 +12,7 @@ type GithubTokenResponse = {
   error_description?: string;
 };
 
-function getAppUrl(request: Request): string {
+function getAppUrl(request: NextRequest): string {
   const configured =
     process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
   if (configured) {
@@ -22,7 +22,7 @@ function getAppUrl(request: Request): string {
   return new URL(request.url).origin;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
