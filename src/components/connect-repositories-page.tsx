@@ -409,17 +409,25 @@ export default function ConnectRepositoriesPage() {
     try {
       const result = await fetchRepositoryConfig(repoFullName, branchName);
 
-      if (!result.ok || !result.data.exists || !result.data.config) {
+      if (!result.ok) {
         setTargetConfig(null);
         setTargetStatus("unavailable");
         return null;
       }
 
       const data = result.data;
+      const config = data.config;
+
+      if (!data.exists || !config) {
+        setTargetConfig(null);
+        setTargetStatus("unavailable");
+        return null;
+      }
+
       const nextConfig: TargetConfig = {
-        targetRepo: data.config.targetRepo?.trim() ?? "",
-        targetBranch: data.config.targetBranch?.trim() ?? "",
-        targetDirectory: data.config.targetDirectory?.trim() || "_posts",
+        targetRepo: config.targetRepo?.trim() ?? "",
+        targetBranch: config.targetBranch?.trim() ?? "",
+        targetDirectory: config.targetDirectory?.trim() || "_posts",
       };
 
       if (!nextConfig.targetRepo || !nextConfig.targetBranch) {
