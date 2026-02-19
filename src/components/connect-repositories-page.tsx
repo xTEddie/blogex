@@ -95,31 +95,42 @@ export default function ConnectRepositoriesPage() {
         </p>
 
         <div className="mt-6">
-          <label
-            htmlFor="repo-select"
-            className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-300"
-          >
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
             Repository
-          </label>
-          <select
-            id="repo-select"
-            value={selectedRepo}
-            onChange={(event) => setSelectedRepo(event.target.value)}
-            disabled={isLoading || repositories.length === 0}
-            className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {repositories.length === 0 ? (
-              <option value="">
-                {isLoading ? "Loading repositories..." : "No repositories found"}
-              </option>
+          </p>
+          <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+            {isLoading ? (
+              <p className="px-3 py-2 text-sm text-zinc-300">
+                Loading repositories...
+              </p>
+            ) : repositories.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-zinc-300">
+                No repositories found
+              </p>
             ) : (
-              repositories.map((repo) => (
-                <option key={repo.id} value={repo.fullName}>
-                  {repo.fullName} {repo.private ? "(private)" : "(public)"}
-                </option>
-              ))
+              repositories.map((repo) => {
+                const isSelected = selectedRepo === repo.fullName;
+
+                return (
+                  <button
+                    key={repo.id}
+                    type="button"
+                    onClick={() => setSelectedRepo(repo.fullName)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      isSelected
+                        ? "border-white/45 bg-white/15 text-white"
+                        : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                    }`}
+                  >
+                    <span className="truncate pr-3">{repo.fullName}</span>
+                    <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-300">
+                      {repo.private ? "Private" : "Public"}
+                    </span>
+                  </button>
+                );
+              })
             )}
-          </select>
+          </div>
         </div>
 
         <div className="mt-4 flex gap-3">
