@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     return oauthFailedResponse;
   }
 
-  const response = NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.redirect(new URL("/user", request.url));
 
   response.cookies.set({
     name: OAUTH_TOKEN_COOKIE,
