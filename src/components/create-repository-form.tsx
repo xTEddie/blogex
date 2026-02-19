@@ -1,12 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-
-type CreateRepositoryResponse = {
-  success?: boolean;
-  url?: string;
-  error?: string;
-};
+import { createRepository } from "@/lib/repositories-client";
 
 export default function CreateRepositoryForm() {
   const [showForm, setShowForm] = useState(false);
@@ -23,20 +18,12 @@ export default function CreateRepositoryForm() {
     setCreatedUrl(null);
 
     try {
-      const response = await fetch("/api/github/repositories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          private: visibility === "private",
-        }),
+      const data = await createRepository({
+        name,
+        isPrivate: visibility === "private",
       });
 
-      const data = (await response.json()) as CreateRepositoryResponse;
-
-      if (!response.ok) {
+      if (data.error) {
         setMessage(data.error ?? "Failed to create repository.");
         return;
       }
