@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Repository = {
   id: number;
@@ -25,10 +25,22 @@ export default function ConnectRepositoriesPage() {
   const [selectedRepo, setSelectedRepo] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
+  const filteredRepositories = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return repositories;
+    }
+
+    return repositories.filter((repo) =>
+      repo.fullName.toLowerCase().includes(query),
+    );
+  }, [repositories, searchQuery]);
 
   async function loadRepositories(targetPage: number) {
     setIsLoading(true);
@@ -69,6 +81,17 @@ export default function ConnectRepositoriesPage() {
     void loadRepositories(1);
   }, []);
 
+  useEffect(() => {
+    if (filteredRepositories.length === 0) {
+      setSelectedRepo("");
+      return;
+    }
+
+    if (!filteredRepositories.some((repo) => repo.fullName === selectedRepo)) {
+      setSelectedRepo(filteredRepositories[0].fullName);
+    }
+  }, [filteredRepositories, selectedRepo]);
+
   function handleConnect() {
     if (!selectedRepo) {
       setMessage("Select a repository first.");
@@ -101,17 +124,24 @@ export default function ConnectRepositoriesPage() {
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
             Repository
           </p>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search repositories on this page"
+            className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+          />
           <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
             {isLoading ? (
               <p className="px-3 py-2 text-sm text-zinc-300">
                 Loading repositories...
               </p>
-            ) : repositories.length === 0 ? (
+            ) : filteredRepositories.length === 0 ? (
               <p className="px-3 py-2 text-sm text-zinc-300">
-                No repositories found
+                No repositories match your search
               </p>
             ) : (
-              repositories.map((repo) => {
+              filteredRepositories.map((repo) => {
                 const isSelected = selectedRepo === repo.fullName;
 
                 return (
@@ -163,7 +193,7 @@ export default function ConnectRepositoriesPage() {
         <button
           type="button"
           onClick={handleConnect}
-          disabled={isLoading || repositories.length === 0}
+          disabled={isLoading || !selectedRepo}
           className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
         >
           Connect
