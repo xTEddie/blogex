@@ -16,8 +16,8 @@ export default function Home() {
 
         <form
           className="mt-8"
-          action="/api/auth/signin/github"
-          method="post"
+          action="/api/auth/github"
+          method="get"
         >
           <button
             type="submit"
