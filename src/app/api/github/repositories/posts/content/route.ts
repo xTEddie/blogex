@@ -5,6 +5,7 @@ import {
   normalizeMarkdownFileName,
   titleToMarkdownFileName,
 } from "@/lib/markdown-post";
+import { applyLineEnding, detectLineEnding } from "@/lib/line-endings";
 import {
   createAddMarkdownCommitMessage,
   createDeleteOldMarkdownAfterRenameCommitMessage,
@@ -251,6 +252,14 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  const currentMarkdown =
+    currentFile.encoding === "base64" && typeof currentFile.content === "string"
+      ? Buffer.from(currentFile.content.replace(/\n/g, ""), "base64").toString("utf8")
+      : "";
+  // Preserve existing file line endings so edits do not flip CRLF/LF unexpectedly.
+  const currentLineEnding = detectLineEnding(currentMarkdown);
+  const normalizedMarkdown = applyLineEnding(markdown, currentLineEnding);
+
   const updateResponse = await fetch(
     `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}`,
     {
@@ -264,7 +273,7 @@ export async function PUT(request: NextRequest) {
       },
       body: JSON.stringify({
         message: commitMessage,
-        content: Buffer.from(markdown).toString("base64"),
+        content: Buffer.from(normalizedMarkdown).toString("base64"),
         sha: currentFile.sha,
         branch,
       }),

@@ -222,7 +222,6 @@ export async function POST(request: NextRequest) {
   );
 
   let existingSha: string | undefined;
-
   if (existingTargetResponse.ok) {
     const existingData = (await existingTargetResponse.json()) as GithubContentItem;
     existingSha = existingData.sha;
@@ -247,6 +246,7 @@ export async function POST(request: NextRequest) {
         message:
           payload.message?.trim() ||
           createSyncMarkdownCommitMessage(sourceFileName, sourceRepo),
+        // Keep source content bytes as-is on pull so current repo matches source CRLF/LF.
         content: Buffer.from(markdown).toString("base64"),
         branch: targetBranch,
         ...(existingSha ? { sha: existingSha } : {}),
