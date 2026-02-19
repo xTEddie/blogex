@@ -54,6 +54,17 @@ type SaveMarkdownResponse = {
   error?: string;
 };
 
+type PersistedConnectState = {
+  selectedRepo?: string;
+  selectedBranch?: string;
+  selectedPostPath?: string;
+  step?: "repository" | "branch" | "explorer";
+  updatedAt: number;
+};
+
+const CONNECT_SESSION_KEY = "blogex:connect-session";
+const CONNECT_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
+
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -76,11 +87,15 @@ export default function ConnectRepositoriesPage() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
   const [postSearchQuery, setPostSearchQuery] = useState("");
   const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [resumeState, setResumeState] = useState<PersistedConnectState | null>(
+    null,
+  );
 
   const filteredRepositories = useMemo(() => {
     const query = repoSearchQuery.trim().toLowerCase();
@@ -128,7 +143,7 @@ export default function ConnectRepositoriesPage() {
     [parsedEditorMarkdown.frontmatter],
   );
 
-  async function loadAllRepositories() {
+  async function loadAllRepositories(restoredState?: PersistedConnectState) {
     setIsLoadingRepositories(true);
     setMessage(null);
 
@@ -176,6 +191,67 @@ export default function ConnectRepositoriesPage() {
       setMarkdownContent("");
       setEditorContent("");
       setEditorView("edit");
+
+      if (!restoredState?.selectedRepo) {
+        return;
+      }
+
+      const availableRepos = new Set(allRepositories.map((repo) => repo.fullName));
+      if (!availableRepos.has(restoredState.selectedRepo)) {
+        setMessage("Saved session repo is no longer available.");
+        return;
+      }
+
+      setSelectedRepo(restoredState.selectedRepo);
+
+      if (!restoredState.step || restoredState.step === "repository") {
+        return;
+      }
+
+      const fetchedBranches = await loadBranches(restoredState.selectedRepo);
+      if (!fetchedBranches || fetchedBranches.length === 0) {
+        return;
+      }
+
+      const availableBranches = new Set(fetchedBranches.map((branch) => branch.name));
+      const restoredBranch =
+        restoredState.selectedBranch && availableBranches.has(restoredState.selectedBranch)
+          ? restoredState.selectedBranch
+          : fetchedBranches[0].name;
+
+      setSelectedBranch(restoredBranch);
+
+      if (restoredState.step === "branch") {
+        setStep("branch");
+        return;
+      }
+
+      const loadedFiles = await loadPostFiles(
+        restoredState.selectedRepo,
+        restoredBranch,
+      );
+      if (!loadedFiles) {
+        return;
+      }
+
+      setStep("explorer");
+
+      if (loadedFiles.length === 0) {
+        return;
+      }
+
+      const availablePaths = new Set(loadedFiles.map((file) => file.path));
+      const restoredPath =
+        restoredState.selectedPostPath &&
+        availablePaths.has(restoredState.selectedPostPath)
+          ? restoredState.selectedPostPath
+          : loadedFiles[0].path;
+
+      await loadMarkdownFile(
+        restoredState.selectedRepo,
+        restoredBranch,
+        restoredPath,
+      );
     } catch {
       setRepositories([]);
       setMessage("Request failed while loading repositories.");
@@ -197,17 +273,17 @@ export default function ConnectRepositoriesPage() {
       if (!response.ok) {
         setMessage(data.error ?? "Failed to load branches.");
         setBranches([]);
-        return false;
+        return null;
       }
 
       const fetchedBranches = data.branches ?? [];
       setBranches(fetchedBranches);
       setSelectedBranch(fetchedBranches.length > 0 ? fetchedBranches[0].name : "");
-      return true;
+      return fetchedBranches;
     } catch {
       setBranches([]);
       setMessage("Request failed while loading branches.");
-      return false;
+      return null;
     } finally {
       setIsLoadingBranches(false);
     }
@@ -279,7 +355,55 @@ export default function ConnectRepositoriesPage() {
 
   useEffect(() => {
     void loadAllRepositories();
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(CONNECT_SESSION_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as PersistedConnectState;
+      const isExpired =
+        !parsed.updatedAt || Date.now() - parsed.updatedAt > CONNECT_SESSION_TTL_MS;
+
+      if (isExpired || !parsed.selectedRepo) {
+        window.localStorage.removeItem(CONNECT_SESSION_KEY);
+        return;
+      }
+
+      setResumeState(parsed);
+    } catch {
+      window.localStorage.removeItem(CONNECT_SESSION_KEY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!selectedRepo) {
+      return;
+    }
+
+    const stateToPersist: PersistedConnectState = {
+      selectedRepo,
+      selectedBranch,
+      selectedPostPath,
+      step,
+      updatedAt: Date.now(),
+    };
+
+    window.localStorage.setItem(
+      CONNECT_SESSION_KEY,
+      JSON.stringify(stateToPersist),
+    );
+  }, [selectedRepo, selectedBranch, selectedPostPath, step]);
 
   useEffect(() => {
     if (filteredRepositories.length === 0) {
@@ -320,10 +444,29 @@ export default function ConnectRepositoriesPage() {
       return;
     }
 
-    const ok = await loadBranches(selectedRepo);
-    if (ok) {
+    const fetchedBranches = await loadBranches(selectedRepo);
+    if (fetchedBranches) {
       setStep("branch");
     }
+  }
+
+  function handleStartFresh() {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(CONNECT_SESSION_KEY);
+    }
+    setResumeState(null);
+  }
+
+  async function handleResumeSession() {
+    if (!resumeState) {
+      return;
+    }
+
+    setIsResuming(true);
+    setMessage(null);
+    await loadAllRepositories(resumeState);
+    setResumeState(null);
+    setIsResuming(false);
   }
 
   async function handleConnectToExplorer() {
@@ -417,6 +560,31 @@ export default function ConnectRepositoriesPage() {
               ? "Select a branch."
               : "Browse markdown files in _posts."}
         </p>
+        {resumeState ? (
+          <div className="mt-4 rounded-xl border border-white/15 bg-white/10 p-4">
+            <p className="text-sm text-zinc-100">
+              Existing connect session found. Do you want to resume?
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleResumeSession()}
+                disabled={isResuming}
+                className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResuming ? "Resuming..." : "Resume"}
+              </button>
+              <button
+                type="button"
+                onClick={handleStartFresh}
+                disabled={isResuming}
+                className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Start fresh
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {step === "repository" ? (
           <div className="mt-6">
