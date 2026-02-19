@@ -1,2 +1,135 @@
 # blogex
 GitHub-native CMS for Markdown blogs.
+
+## API
+
+All routes are Next.js Route Handlers under `src/app/api` unless noted.
+Most routes require an authenticated session cookie: `gh_oauth_token`.
+
+### Auth
+
+#### `GET /api/auth/github`
+- Description: Starts GitHub OAuth flow and redirects to GitHub authorize page.
+- Query params: none.
+- Body: none.
+
+#### `GET /auth/github/callback`
+- Description: OAuth callback route. Exchanges `code` for token, sets auth cookie, redirects to `/user`.
+- Query params:
+  - `code` (required): GitHub OAuth code.
+  - `state` (required): CSRF state.
+- Body: none.
+
+#### `POST /api/auth/logout`
+- Description: Clears auth cookies and redirects to home.
+- Query params: none.
+- Body: none.
+
+### Repositories
+
+#### `GET /api/github/repositories`
+- Description: Lists blogex repositories available to the authenticated user.
+- Query params:
+  - `page` (optional, default `1`)
+  - `per_page` (optional, default `20`, max `100`)
+- Body: none.
+
+#### `POST /api/github/repositories`
+- Description: Creates a repository, initializes `blogex.config.json` and default `_posts` file.
+- Query params: none.
+- Body (JSON):
+  - `name` (required): repository name.
+  - `private` (optional): `true` for private, otherwise public.
+
+#### `GET /api/github/repositories/branches`
+- Description: Lists branches for a repository.
+- Query params:
+  - `repo` (required): `owner/name`.
+- Body: none.
+
+### Posts
+
+#### `GET /api/github/repositories/posts`
+- Description: Lists markdown files in `_posts` for a repo branch.
+- Query params:
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+- Body: none.
+
+#### `GET /api/github/repositories/posts/content`
+- Description: Fetches markdown content for one file.
+- Query params:
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+  - `path` (required): markdown path under `_posts`, e.g. `_posts/hello-world.md`.
+- Body: none.
+
+#### `PUT /api/github/repositories/posts/content`
+- Description: Updates one markdown file and commits to the selected branch.
+- Query params: none.
+- Body (JSON):
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+  - `path` (required): markdown path under `_posts`.
+  - `markdown` (required): full markdown file content.
+  - `message` (optional): custom commit message.
+
+#### `POST /api/github/repositories/posts/content`
+- Description: Creates a new markdown file in `_posts` and commits it.
+- Query params: none.
+- Body (JSON):
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+  - `title` (required): title used to generate slug/file name.
+  - `markdown` (optional): custom initial content.
+  - `message` (optional): custom commit message.
+
+### Blogex Config
+
+#### `GET /api/github/repositories/config`
+- Description: Reads `blogex.config.json` for a repo branch.
+- Query params:
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+- Body: none.
+
+#### `PUT /api/github/repositories/config`
+- Description: Creates/updates `blogex.config.json` in a repo branch.
+- Query params: none.
+- Body (JSON):
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+  - `config` (required): object stored in `blogex.config.json`.
+    - Supports keys like: `owner`, `targetRepo`, `targetBranch`, `targetDirectory`.
+  - `message` (optional): custom commit message.
+
+### Sync
+
+#### `GET /api/github/repositories/sync`
+- Description: Lists markdown candidates from source repository directory.
+- Query params:
+  - `sourceRepo` (required): `owner/name`.
+  - `sourceBranch` (required): branch name.
+  - `sourceDirectory` (optional, default `_posts`): directory to scan.
+- Body: none.
+
+#### `POST /api/github/repositories/sync`
+- Description: Pulls one markdown file from source repo into target repo `_posts` and commits.
+- Query params: none.
+- Body (JSON):
+  - `sourceRepo` (required): `owner/name`.
+  - `sourceBranch` (required): source branch.
+  - `sourceDirectory` (optional, default `_posts`): source directory.
+  - `sourcePath` (required): full source file path.
+  - `targetRepo` (required): `owner/name`.
+  - `targetBranch` (required): target branch.
+  - `message` (optional): custom commit message.
+
+#### `GET /api/github/repositories/sync/status`
+- Description: Checks whether selected markdown already exists in target repo path.
+- Query params:
+  - `targetRepo` (required): `owner/name`.
+  - `targetBranch` (required): branch name.
+  - `targetDirectory` (optional, default `_posts`): directory in target repo.
+  - `sourcePath` (required): selected source markdown path.
+- Body: none.
