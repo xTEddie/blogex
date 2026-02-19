@@ -406,7 +406,7 @@ export default function ConnectRepositoriesPage() {
               placeholder="Search repositories"
               className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
-            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+            <div className="editor-scrollbar max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
               {isLoadingRepositories ? (
                 <p className="px-3 py-2 text-sm text-zinc-300">
                   Loading repositories...
@@ -476,7 +476,7 @@ export default function ConnectRepositoriesPage() {
               placeholder="Search branches"
               className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
-            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+            <div className="editor-scrollbar max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
               {isLoadingBranches ? (
                 <p className="px-3 py-2 text-sm text-zinc-300">Loading branches...</p>
               ) : filteredBranches.length === 0 ? (
@@ -542,7 +542,7 @@ export default function ConnectRepositoriesPage() {
                   placeholder="Search markdown files"
                   className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
                 />
-                <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+                <div className="editor-scrollbar max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
                   {isLoadingPosts ? (
                     <p className="px-3 py-2 text-sm text-zinc-300">
                       Loading markdown files...
