@@ -116,3 +116,28 @@ body {
   background: transparent;
   padding: 0;
 }
+
+.markdown-preview {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+.markdown-preview * {
+  max-width: 100%;
+}
+
+.markdown-preview p,
+.markdown-preview li,
+.markdown-preview blockquote,
+.markdown-preview td,
+.markdown-preview th {
+  word-break: break-word;
+}
+
+.markdown-preview table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}

@@ -166,9 +166,9 @@ export default function ExplorerStep({
           </div>
         </div>
 
-        <div className="min-h-[300px] rounded-xl border border-white/15 bg-zinc-900/60">
+        <div className="min-h-[300px] min-w-0 rounded-xl border border-white/15 bg-zinc-900/60">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <p className="text-sm text-zinc-200">{selectedPostName || "Markdown editor"}</p>
               {selectedPostPath ? <FileSyncStatus status={targetStatus} /> : null}
               <button
@@ -196,8 +196,31 @@ export default function ExplorerStep({
                 )}
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="rounded-lg border border-white/15 bg-white/10 p-1">
+
+            <button
+              type="button"
+              onClick={onSaveMarkdown}
+              disabled={
+                !selectedPostPath ||
+                isLoadingMarkdown ||
+                isSavingMarkdown ||
+                editorContent === markdownContent
+              }
+              title={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
+              aria-label={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
+              className="shrink-0 rounded-lg border border-white/15 bg-white/95 px-2.5 py-1.5 text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSavingMarkdown ? (
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
+              ) : (
+                <SaveIcon className="h-3.5 w-3.5 fill-current" />
+              )}
+            </button>
+          </div>
+
+          <div className="border-b border-white/10 px-4 py-2.5">
+            <div className="flex items-center justify-between gap-2 overflow-x-auto">
+              <div className="rounded-lg border border-white/15 bg-white/10 p-1 whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => onEditorViewChange("edit")}
@@ -221,25 +244,7 @@ export default function ExplorerStep({
                   Preview
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={onSaveMarkdown}
-                disabled={
-                  !selectedPostPath ||
-                  isLoadingMarkdown ||
-                  isSavingMarkdown ||
-                  editorContent === markdownContent
-                }
-                title={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
-                aria-label={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
-                className="shrink-0 rounded-lg border border-white/15 bg-white/95 px-2.5 py-1.5 text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingMarkdown ? (
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
-                ) : (
-                  <SaveIcon className="h-3.5 w-3.5 fill-current" />
-                )}
-              </button>
+              <span className="shrink-0 text-[11px] text-zinc-500">Editor mode</span>
             </div>
           </div>
           {isRenameEditorOpen ? (
@@ -339,7 +344,7 @@ export default function ExplorerStep({
               ) : null}
             </div>
           ) : null}
-          <div className="max-h-[420px] overflow-auto px-4 py-3">
+          <div className="max-h-[420px] min-w-0 overflow-auto px-4 py-3">
             {isLoadingMarkdown ? (
               <p className="text-sm text-zinc-300">Loading file content...</p>
             ) : selectedPostPath && editorView === "edit" ? (
@@ -349,7 +354,7 @@ export default function ExplorerStep({
                 className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
               />
             ) : selectedPostPath && editorView === "preview" ? (
-              <div className="markdown-preview text-sm leading-6 text-zinc-100">
+              <div className="markdown-preview min-w-0 text-sm leading-6 text-zinc-100">
                 {frontmatterEntries.length > 0 ? (
                   <div className="mb-4 rounded-lg border border-white/15 bg-zinc-950/80 p-3">
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
