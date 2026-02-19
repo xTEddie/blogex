@@ -23,6 +23,20 @@ type GithubRepository = {
   private: boolean;
 };
 
+function parsePositiveInteger(value: string | null, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
@@ -30,8 +44,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const page = parsePositiveInteger(request.nextUrl.searchParams.get("page"), 1);
+  const perPage = Math.min(
+    parsePositiveInteger(request.nextUrl.searchParams.get("per_page"), 20),
+    100,
+  );
+
   const githubResponse = await fetch(
-    "https://api.github.com/user/repos?sort=updated&per_page=100",
+    `https://api.github.com/user/repos?sort=updated&page=${page}&per_page=${perPage}`,
     {
       headers: {
         Accept: "application/vnd.github+json",
@@ -52,6 +72,9 @@ export async function GET(request: NextRequest) {
   }
 
   const githubData = (await githubResponse.json()) as GithubRepository[];
+  const linkHeader = githubResponse.headers.get("link") ?? "";
+  const hasNext = linkHeader.includes('rel="next"');
+  const hasPrev = page > 1;
 
   return NextResponse.json(
     {
@@ -61,6 +84,10 @@ export async function GET(request: NextRequest) {
         fullName: repo.full_name,
         private: repo.private,
       })),
+      page,
+      perPage,
+      hasNext,
+      hasPrev,
     },
     { status: 200 },
   );
