@@ -13,13 +13,7 @@ type GithubTokenResponse = {
 };
 
 function getAppUrl(request: NextRequest): string {
-  const configured =
-    process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
-
-  return new URL(request.url).origin;
+  return request.nextUrl.origin;
 }
 
 export async function GET(request: NextRequest) {
@@ -90,7 +84,8 @@ export async function GET(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(new URL("/user", request.url));
-
+  // OAUTH token cookie valid for 12 hours (GitHub tokens do not expire by default, but we set a reasonable max age for the cookie)
+  const oauthTokenSystemExpiry = 60 * 60 * 12;
   response.cookies.set({
     name: OAUTH_TOKEN_COOKIE,
     value: tokenData.access_token,
@@ -98,7 +93,7 @@ export async function GET(request: NextRequest) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: oauthTokenSystemExpiry,
   });
 
   response.cookies.set({

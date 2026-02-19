@@ -4,13 +4,7 @@ const OAUTH_STATE_COOKIE = "gh_oauth_state";
 const CALLBACK_PATH = "/auth/github/callback";
 
 function getAppUrl(request: NextRequest): string {
-  const configured =
-    process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
-
-  return new URL(request.url).origin;
+  return request.nextUrl.origin;
 }
 
 export async function GET(request: NextRequest) {
