@@ -4,6 +4,10 @@ import {
   buildInitialMarkdownFromTitle,
   titleToMarkdownFileName,
 } from "@/lib/markdown-post";
+import {
+  createAddMarkdownCommitMessage,
+  createUpdateMarkdownCommitMessage,
+} from "@/lib/commit-messages";
 
 type GithubFileResponse = {
   type: "file";
@@ -162,7 +166,7 @@ export async function PUT(request: NextRequest) {
   const filePath = payload.path?.trim();
   const markdown = payload.markdown;
   const commitMessage =
-    payload.message?.trim() || `chore: update ${payload.path ?? "markdown file"}`;
+    payload.message?.trim() || createUpdateMarkdownCommitMessage(payload.path);
 
   if (!repo) {
     return NextResponse.json(
@@ -303,7 +307,7 @@ export async function POST(request: NextRequest) {
       ? payload.markdown
       : buildInitialMarkdownFromTitle(title);
   const commitMessage =
-    payload.message?.trim() || `chore: add ${normalizedFileName ?? "new post"}`;
+    payload.message?.trim() || createAddMarkdownCommitMessage(normalizedFileName);
 
   if (!repo) {
     return NextResponse.json(

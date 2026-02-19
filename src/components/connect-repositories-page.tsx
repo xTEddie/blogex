@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import matter from "gray-matter";
 import remarkGfm from "remark-gfm";
+import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
 
 type Repository = {
@@ -727,7 +728,7 @@ export default function ConnectRepositoriesPage() {
           branch: selectedBranch,
           path: selectedPostPath,
           markdown: editorContent,
-          message: `chore: update ${selectedPostName}`,
+          message: createUpdateMarkdownCommitMessage(selectedPostName),
         }),
       });
 

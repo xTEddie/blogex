@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { createSyncMarkdownCommitMessage } from "@/lib/commit-messages";
 
 type GithubContentItem = {
   type: "file" | "dir";
@@ -243,7 +244,9 @@ export async function POST(request: NextRequest) {
       method: "PUT",
       headers: getGithubHeaders(token, true),
       body: JSON.stringify({
-        message: payload.message?.trim() || `chore: sync ${sourceFileName} from ${sourceRepo}`,
+        message:
+          payload.message?.trim() ||
+          createSyncMarkdownCommitMessage(sourceFileName, sourceRepo),
         content: Buffer.from(markdown).toString("base64"),
         branch: targetBranch,
         ...(existingSha ? { sha: existingSha } : {}),

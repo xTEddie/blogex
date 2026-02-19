@@ -5,10 +5,12 @@ import {
   buildRepositoryConfigContent,
   getRepositoryInitTemplatePath,
   REPOSITORY_CONFIG_FILE_PATH,
-  REPOSITORY_CONFIG_COMMIT_MESSAGE,
-  REPOSITORY_INIT_COMMIT_MESSAGE,
   REPOSITORY_INIT_TARGET_FILE_PATH,
 } from "@/lib/repository-init-config";
+import {
+  createRepositoryConfigCommitMessage,
+  createRepositoryInitPostCommitMessage,
+} from "@/lib/commit-messages";
 
 type CreateRepositoryPayload = {
   name?: string;
@@ -286,7 +288,7 @@ export async function POST(request: NextRequest) {
           "User-Agent": "blogex",
         },
         body: JSON.stringify({
-          message: REPOSITORY_CONFIG_COMMIT_MESSAGE,
+          message: createRepositoryConfigCommitMessage(),
           content: Buffer.from(buildRepositoryConfigContent(owner)).toString(
             "base64",
           ),
@@ -325,7 +327,7 @@ export async function POST(request: NextRequest) {
           "User-Agent": "blogex",
         },
         body: JSON.stringify({
-          message: REPOSITORY_INIT_COMMIT_MESSAGE,
+          message: createRepositoryInitPostCommitMessage(),
           content: Buffer.from(defaultPostContent).toString("base64"),
         }),
         cache: "no-store",

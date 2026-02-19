@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { createUpdateBlogexConfigCommitMessage } from "@/lib/commit-messages";
 import { REPOSITORY_CONFIG_FILE_PATH } from "@/lib/repository-init-config";
 
 type GithubContentResponse = {
@@ -191,7 +192,7 @@ export async function PUT(request: NextRequest) {
       method: "PUT",
       headers: getGithubHeaders(token, true),
       body: JSON.stringify({
-        message: payload.message?.trim() || "chore: update blogex config",
+        message: payload.message?.trim() || createUpdateBlogexConfigCommitMessage(),
         content: Buffer.from(`${JSON.stringify(payload.config, null, 2)}\n`).toString(
           "base64",
         ),
