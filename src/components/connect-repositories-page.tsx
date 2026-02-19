@@ -10,6 +10,16 @@ type Repository = {
   private: boolean;
 };
 
+type Branch = {
+  name: string;
+};
+
+type PostFile = {
+  name: string;
+  path: string;
+  size: number;
+};
+
 type RepositoriesResponse = {
   repositories?: Repository[];
   page?: number;
@@ -18,52 +28,78 @@ type RepositoriesResponse = {
   error?: string;
 };
 
-type Branch = {
-  name: string;
-};
-
 type BranchesResponse = {
   branches?: Branch[];
+  error?: string;
+};
+
+type PostFilesResponse = {
+  files?: PostFile[];
+  error?: string;
+};
+
+type MarkdownContentResponse = {
+  name?: string;
+  path?: string;
+  markdown?: string;
   error?: string;
 };
 
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [postFiles, setPostFiles] = useState<PostFile[]>([]);
+
   const [selectedRepo, setSelectedRepo] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [branchSearchQuery, setBranchSearchQuery] = useState("");
-  const [totalPages, setTotalPages] = useState<number | null>(null);
-  const [step, setStep] = useState<"repository" | "branch">("repository");
-  const filteredRepositories = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+  const [selectedPostPath, setSelectedPostPath] = useState("");
+  const [selectedPostName, setSelectedPostName] = useState("");
+  const [markdownContent, setMarkdownContent] = useState("");
 
+  const [step, setStep] = useState<"repository" | "branch" | "explorer">(
+    "repository",
+  );
+  const [message, setMessage] = useState<string | null>(null);
+  const [isLoadingRepositories, setIsLoadingRepositories] = useState(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
+
+  const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  const [branchSearchQuery, setBranchSearchQuery] = useState("");
+  const [postSearchQuery, setPostSearchQuery] = useState("");
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+
+  const filteredRepositories = useMemo(() => {
+    const query = repoSearchQuery.trim().toLowerCase();
     if (!query) {
       return repositories;
     }
-
     return repositories.filter((repo) =>
       repo.fullName.toLowerCase().includes(query),
     );
-  }, [repositories, searchQuery]);
+  }, [repositories, repoSearchQuery]);
+
   const filteredBranches = useMemo(() => {
     const query = branchSearchQuery.trim().toLowerCase();
-
     if (!query) {
       return branches;
     }
-
     return branches.filter((branch) =>
       branch.name.toLowerCase().includes(query),
     );
   }, [branches, branchSearchQuery]);
 
+  const filteredPostFiles = useMemo(() => {
+    const query = postSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return postFiles;
+    }
+    return postFiles.filter((file) => file.name.toLowerCase().includes(query));
+  }, [postFiles, postSearchQuery]);
+
   async function loadAllRepositories() {
-    setIsLoading(true);
+    setIsLoadingRepositories(true);
     setMessage(null);
 
     try {
@@ -79,8 +115,8 @@ export default function ConnectRepositoriesPage() {
         const data = (await response.json()) as RepositoriesResponse;
 
         if (!response.ok) {
-          setRepositories([]);
           setMessage(data.error ?? "Failed to load repositories.");
+          setRepositories([]);
           return;
         }
 
@@ -103,12 +139,106 @@ export default function ConnectRepositoriesPage() {
       );
       setStep("repository");
       setBranches([]);
+      setPostFiles([]);
       setSelectedBranch("");
+      setSelectedPostPath("");
+      setSelectedPostName("");
+      setMarkdownContent("");
     } catch {
       setRepositories([]);
-      setMessage("Request failed. Please try again.");
+      setMessage("Request failed while loading repositories.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingRepositories(false);
+    }
+  }
+
+  async function loadBranches(repoFullName: string) {
+    setIsLoadingBranches(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/github/repositories/branches?repo=${encodeURIComponent(repoFullName)}`,
+      );
+      const data = (await response.json()) as BranchesResponse;
+
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to load branches.");
+        setBranches([]);
+        return false;
+      }
+
+      const fetchedBranches = data.branches ?? [];
+      setBranches(fetchedBranches);
+      setSelectedBranch(fetchedBranches.length > 0 ? fetchedBranches[0].name : "");
+      return true;
+    } catch {
+      setBranches([]);
+      setMessage("Request failed while loading branches.");
+      return false;
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  }
+
+  async function loadPostFiles(repoFullName: string, branchName: string) {
+    setIsLoadingPosts(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/github/repositories/posts?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}`,
+      );
+      const data = (await response.json()) as PostFilesResponse;
+
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to load markdown files.");
+        setPostFiles([]);
+        return null;
+      }
+
+      const fetchedFiles = data.files ?? [];
+      setPostFiles(fetchedFiles);
+      setSelectedPostPath(fetchedFiles.length > 0 ? fetchedFiles[0].path : "");
+      setSelectedPostName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
+      return fetchedFiles;
+    } catch {
+      setPostFiles([]);
+      setMessage("Request failed while loading markdown files.");
+      return null;
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }
+
+  async function loadMarkdownFile(
+    repoFullName: string,
+    branchName: string,
+    filePath: string,
+  ) {
+    setIsLoadingMarkdown(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/github/repositories/posts/content?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}&path=${encodeURIComponent(filePath)}`,
+      );
+      const data = (await response.json()) as MarkdownContentResponse;
+
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to load markdown content.");
+        setMarkdownContent("");
+        return;
+      }
+
+      setMarkdownContent(data.markdown ?? "");
+      setSelectedPostPath(data.path ?? filePath);
+      setSelectedPostName(data.name ?? filePath.split("/").pop() ?? filePath);
+    } catch {
+      setMessage("Request failed while loading markdown content.");
+      setMarkdownContent("");
+    } finally {
+      setIsLoadingMarkdown(false);
     }
   }
 
@@ -126,6 +256,7 @@ export default function ConnectRepositoriesPage() {
       setSelectedRepo(filteredRepositories[0].fullName);
     }
   }, [filteredRepositories, selectedRepo]);
+
   useEffect(() => {
     if (filteredBranches.length === 0) {
       setSelectedBranch("");
@@ -137,58 +268,61 @@ export default function ConnectRepositoriesPage() {
     }
   }, [filteredBranches, selectedBranch]);
 
-  async function handleNext() {
+  useEffect(() => {
+    if (filteredPostFiles.length === 0) {
+      setSelectedPostPath("");
+      return;
+    }
+
+    if (!filteredPostFiles.some((file) => file.path === selectedPostPath)) {
+      setSelectedPostPath(filteredPostFiles[0].path);
+    }
+  }, [filteredPostFiles, selectedPostPath]);
+
+  async function handleNextToBranches() {
     if (!selectedRepo) {
       setMessage("Select a repository first.");
       return;
     }
 
-    setIsLoadingBranches(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(
-        `/api/github/repositories/branches?repo=${encodeURIComponent(selectedRepo)}`,
-      );
-      const data = (await response.json()) as BranchesResponse;
-
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to load branches.");
-        setBranches([]);
-        return;
-      }
-
-      const fetchedBranches = data.branches ?? [];
-      setBranches(fetchedBranches);
-      setSelectedBranch(fetchedBranches.length > 0 ? fetchedBranches[0].name : "");
+    const ok = await loadBranches(selectedRepo);
+    if (ok) {
       setStep("branch");
-    } catch {
-      setBranches([]);
-      setMessage("Request failed. Please try again.");
-    } finally {
-      setIsLoadingBranches(false);
     }
   }
 
-  function handleBackToRepositories() {
-    setStep("repository");
-    setMessage(null);
-  }
-
-  function handleConnect() {
+  async function handleConnectToExplorer() {
     if (!selectedRepo || !selectedBranch) {
       setMessage("Select a repository and branch first.");
       return;
     }
 
-    setMessage(
-      `Connected to ${selectedRepo} on ${selectedBranch} (no-op for now).`,
-    );
+    const loadedFiles = await loadPostFiles(selectedRepo, selectedBranch);
+    if (!loadedFiles) {
+      return;
+    }
+
+    if (loadedFiles.length > 0) {
+      await loadMarkdownFile(selectedRepo, selectedBranch, loadedFiles[0].path);
+    } else {
+      setMarkdownContent("");
+    }
+
+    setStep("explorer");
+  }
+
+  async function handleOpenFile(file: PostFile) {
+    if (!selectedRepo || !selectedBranch) {
+      setMessage("Repository or branch is not selected.");
+      return;
+    }
+
+    await loadMarkdownFile(selectedRepo, selectedBranch, file.path);
   }
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-8 sm:px-6">
-      <section className="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
+      <section className="mx-auto w-full max-w-5xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
             Connect repository
@@ -202,7 +336,11 @@ export default function ConnectRepositoriesPage() {
         </div>
 
         <p className="mt-2 text-sm text-zinc-300">
-          Select a repository and click connect.
+          {step === "repository"
+            ? "Select a repository."
+            : step === "branch"
+              ? "Select a branch."
+              : "Browse markdown files in _posts."}
         </p>
 
         {step === "repository" ? (
@@ -212,13 +350,13 @@ export default function ConnectRepositoriesPage() {
             </p>
             <input
               type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              value={repoSearchQuery}
+              onChange={(event) => setRepoSearchQuery(event.target.value)}
               placeholder="Search repositories"
               className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
             <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
-              {isLoading ? (
+              {isLoadingRepositories ? (
                 <p className="px-3 py-2 text-sm text-zinc-300">
                   Loading repositories...
                 </p>
@@ -250,8 +388,22 @@ export default function ConnectRepositoriesPage() {
                 })
               )}
             </div>
+            <p className="mt-4 text-xs text-zinc-400">
+              Loaded {repositories.length} repositories
+              {totalPages ? ` across ${totalPages} pages` : ""}.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleNextToBranches()}
+              disabled={isLoadingRepositories || !selectedRepo || isLoadingBranches}
+              className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isLoadingBranches ? "Loading branches..." : "Next"}
+            </button>
           </div>
-        ) : (
+        ) : null}
+
+        {step === "branch" ? (
           <div className="mt-6">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-xs font-medium uppercase tracking-wide text-zinc-300">
@@ -259,7 +411,7 @@ export default function ConnectRepositoriesPage() {
               </p>
               <button
                 type="button"
-                onClick={handleBackToRepositories}
+                onClick={() => setStep("repository")}
                 className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
               >
                 Change repo
@@ -301,35 +453,102 @@ export default function ConnectRepositoriesPage() {
                 })
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => void handleConnectToExplorer()}
+              disabled={isLoadingBranches || !selectedBranch || isLoadingPosts}
+              className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isLoadingPosts ? "Loading _posts..." : "Connect"}
+            </button>
           </div>
-        )}
+        ) : null}
 
-        <p className="mt-4 text-xs text-zinc-400">
-          Loaded {repositories.length} repositories
-          {totalPages ? ` across ${totalPages} pages` : ""}.
-        </p>
+        {step === "explorer" ? (
+          <div className="mt-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStep("branch")}
+                className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
+              >
+                Change branch
+              </button>
+              <p className="text-xs text-zinc-400">
+                Repo: {selectedRepo} | Branch: {selectedBranch}
+              </p>
+            </div>
 
-        {step === "repository" ? (
-          <button
-            type="button"
-            onClick={() => void handleNext()}
-            disabled={isLoading || !selectedRepo || isLoadingBranches}
-            className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isLoadingBranches ? "Loading branches..." : "Next"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleConnect}
-            disabled={isLoadingBranches || !selectedBranch}
-            className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            Connect
-          </button>
-        )}
+            <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
+                  _posts
+                </p>
+                <input
+                  type="text"
+                  value={postSearchQuery}
+                  onChange={(event) => setPostSearchQuery(event.target.value)}
+                  placeholder="Search markdown files"
+                  className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+                />
+                <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+                  {isLoadingPosts ? (
+                    <p className="px-3 py-2 text-sm text-zinc-300">
+                      Loading markdown files...
+                    </p>
+                  ) : filteredPostFiles.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-zinc-300">
+                      No markdown files found in _posts
+                    </p>
+                  ) : (
+                    filteredPostFiles.map((file) => {
+                      const isSelected = selectedPostPath === file.path;
 
-        {message ? <p className="mt-3 text-sm text-zinc-200">{message}</p> : null}
+                      return (
+                        <button
+                          key={file.path}
+                          type="button"
+                          onClick={() => void handleOpenFile(file)}
+                          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            isSelected
+                              ? "border-white/45 bg-white/15 text-white"
+                              : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                          }`}
+                        >
+                          <span className="truncate pr-3">{file.name}</span>
+                          <span className="shrink-0 text-[11px] text-zinc-400">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="min-h-[300px] rounded-xl border border-white/15 bg-zinc-900/60">
+                <div className="border-b border-white/10 px-4 py-3 text-sm text-zinc-200">
+                  {selectedPostName || "Markdown preview"}
+                </div>
+                <div className="max-h-[420px] overflow-auto px-4 py-3">
+                  {isLoadingMarkdown ? (
+                    <p className="text-sm text-zinc-300">Loading file content...</p>
+                  ) : markdownContent ? (
+                    <pre className="whitespace-pre-wrap break-words text-sm leading-6 text-zinc-100">
+                      {markdownContent}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-zinc-300">
+                      Select a markdown file to view its content.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {message ? <p className="mt-4 text-sm text-zinc-200">{message}</p> : null}
       </section>
     </main>
   );
