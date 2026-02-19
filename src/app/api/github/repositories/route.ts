@@ -4,8 +4,8 @@ import { clearAuthCookies } from "@/lib/auth-cookies";
 import {
   buildRepositoryConfigContent,
   getRepositoryInitTemplatePath,
-  REPOSITORY_CONFIG_COMMIT_MESSAGE,
   REPOSITORY_CONFIG_FILE_PATH,
+  REPOSITORY_CONFIG_COMMIT_MESSAGE,
   REPOSITORY_INIT_COMMIT_MESSAGE,
   REPOSITORY_INIT_TARGET_FILE_PATH,
 } from "@/lib/repository-init-config";
@@ -31,6 +31,10 @@ type GithubRepository = {
   private: boolean;
 };
 
+type GithubApiError = {
+  message?: string;
+};
+
 function parsePositiveInteger(value: string | null, fallback: number): number {
   if (!value) {
     return fallback;
@@ -45,33 +49,71 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
   return parsed;
 }
 
-function extractTotalPages(linkHeader: string, currentPage: number, hasNext: boolean) {
-  const segments = linkHeader.split(",");
+async function fetchAllGithubRepositories(token: string) {
+  const repositories: GithubRepository[] = [];
+  let currentPage = 1;
+  let hasNext = true;
 
-  for (const segment of segments) {
-    if (!segment.includes('rel="last"')) {
-      continue;
+  while (hasNext) {
+    const response = await fetch(
+      `https://api.github.com/user/repos?sort=updated&page=${currentPage}&per_page=100`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "blogex",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return {
+        repositories: [],
+        error: (await response.json()) as GithubApiError,
+        status: response.status,
+      };
     }
 
-    const match = segment.match(/<([^>]+)>/);
+    const pageRepositories = (await response.json()) as GithubRepository[];
+    repositories.push(...pageRepositories);
 
-    if (!match) {
-      continue;
-    }
-
-    const url = new URL(match[1]);
-    const lastPage = Number.parseInt(url.searchParams.get("page") ?? "", 10);
-
-    if (Number.isFinite(lastPage) && lastPage > 0) {
-      return lastPage;
-    }
+    const linkHeader = response.headers.get("link") ?? "";
+    hasNext = linkHeader.includes('rel="next"');
+    currentPage += 1;
   }
 
-  if (!hasNext) {
-    return currentPage;
+  return { repositories, status: 200 as const };
+}
+
+async function hasBlogexConfig(token: string, repositoryFullName: string) {
+  const response = await fetch(
+    `https://api.github.com/repos/${repositoryFullName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "blogex",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (response.status === 404) {
+    return { exists: false, status: 404 as const };
   }
 
-  return null;
+  if (!response.ok) {
+    return {
+      exists: false,
+      status: response.status,
+      error: (await response.json()) as GithubApiError,
+    };
+  }
+
+  return { exists: true, status: 200 as const };
 }
 
 export async function GET(request: NextRequest) {
@@ -87,46 +129,68 @@ export async function GET(request: NextRequest) {
     100,
   );
 
-  const githubResponse = await fetch(
-    `https://api.github.com/user/repos?sort=updated&page=${page}&per_page=${perPage}`,
-    {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
-      cache: "no-store",
-    },
-  );
-
-  if (!githubResponse.ok) {
-    const errorData = (await githubResponse.json()) as { message?: string };
+  const allRepositoriesResponse = await fetchAllGithubRepositories(token);
+  if (allRepositoriesResponse.status !== 200) {
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch repositories." },
-      { status: githubResponse.status },
+      {
+        error:
+          allRepositoriesResponse.error?.message ??
+          "Failed to fetch repositories.",
+      },
+      { status: allRepositoriesResponse.status },
     );
-    if (githubResponse.status === 401) {
+    if (allRepositoriesResponse.status === 401) {
       return clearAuthCookies(response);
     }
     return response;
   }
 
-  const githubData = (await githubResponse.json()) as GithubRepository[];
-  const linkHeader = githubResponse.headers.get("link") ?? "";
-  const hasNext = linkHeader.includes('rel="next"');
-  const hasPrev = page > 1;
-  const totalPages = extractTotalPages(linkHeader, page, hasNext);
+  const matchingRepositories: GithubRepository[] = [];
+  const batchSize = 10;
+
+  for (let index = 0; index < allRepositoriesResponse.repositories.length; index += batchSize) {
+    const batch = allRepositoriesResponse.repositories.slice(index, index + batchSize);
+    const checks = await Promise.all(
+      batch.map((repo) => hasBlogexConfig(token, repo.full_name)),
+    );
+
+    for (let i = 0; i < checks.length; i += 1) {
+      const check = checks[i];
+
+      if (check.exists) {
+        matchingRepositories.push(batch[i]);
+        continue;
+      }
+
+      if (check.status === 401) {
+        const response = NextResponse.json(
+          { error: check.error?.message ?? "GitHub token is no longer valid." },
+          { status: 401 },
+        );
+        return clearAuthCookies(response);
+      }
+    }
+  }
+
+  const totalMatching = matchingRepositories.length;
+  const totalPages =
+    totalMatching === 0 ? 0 : Math.ceil(totalMatching / perPage);
+  const normalizedPage =
+    totalPages === 0 ? 1 : Math.min(page, totalPages);
+  const start = (normalizedPage - 1) * perPage;
+  const paginatedRepositories = matchingRepositories.slice(start, start + perPage);
+  const hasPrev = normalizedPage > 1;
+  const hasNext = totalPages > 0 && normalizedPage < totalPages;
 
   return NextResponse.json(
     {
-      repositories: githubData.map((repo) => ({
+      repositories: paginatedRepositories.map((repo) => ({
         id: repo.id,
         name: repo.name,
         fullName: repo.full_name,
         private: repo.private,
       })),
-      page,
+      page: normalizedPage,
       perPage,
       hasNext,
       hasPrev,
