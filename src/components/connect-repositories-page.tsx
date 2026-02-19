@@ -603,7 +603,7 @@ export default function ConnectRepositoriesPage() {
                     <textarea
                       value={editorContent}
                       onChange={(event) => setEditorContent(event.target.value)}
-                      className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
+                      className="editor-scrollbar min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
                     />
                   ) : (
                     <p className="text-sm text-zinc-300">
