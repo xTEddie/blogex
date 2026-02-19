@@ -543,7 +543,7 @@ export default function ConnectRepositoriesPage() {
       <section className="mx-auto w-full max-w-5xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            Connect repository
+            Workspace
           </h1>
           <Link
             href="/user"
@@ -563,7 +563,7 @@ export default function ConnectRepositoriesPage() {
         {resumeState ? (
           <div className="mt-4 rounded-xl border border-white/15 bg-white/10 p-4">
             <p className="text-sm text-zinc-100">
-              Existing connect session found. Do you want to resume?
+              Existing workspace session found. Do you want to resume?
             </p>
             <div className="mt-3 flex gap-2">
               <button

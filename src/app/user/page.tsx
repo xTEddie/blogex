@@ -49,10 +49,10 @@ export default async function UserPage() {
         </h1>
         <CreateRepositoryForm />
         <Link
-          href="/user/connect"
+          href="/workspace"
           className="mt-5 block w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/15"
         >
-          Connect repository
+          Open Workspace
         </Link>
         <form action="/api/auth/logout" method="post" className="mt-8">
           <button
