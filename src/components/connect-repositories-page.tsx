@@ -14,8 +14,6 @@ type RepositoriesResponse = {
   repositories?: Repository[];
   page?: number;
   perPage?: number;
-  hasNext?: boolean;
-  hasPrev?: boolean;
   totalPages?: number | null;
   error?: string;
 };
@@ -26,10 +24,7 @@ export default function ConnectRepositoriesPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState<number | null>(null);
-  const [hasNext, setHasNext] = useState(false);
-  const [hasPrev, setHasPrev] = useState(false);
   const filteredRepositories = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -42,32 +37,44 @@ export default function ConnectRepositoriesPage() {
     );
   }, [repositories, searchQuery]);
 
-  async function loadRepositories(targetPage: number) {
+  async function loadAllRepositories() {
     setIsLoading(true);
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories?page=${targetPage}&per_page=20`,
-      );
-      const data = (await response.json()) as RepositoriesResponse;
+      const allRepositories: Repository[] = [];
+      let currentPage = 1;
+      let hasNext = true;
+      let resolvedTotalPages: number | null = null;
 
-      if (!response.ok) {
-        setRepositories([]);
-        setMessage(data.error ?? "Failed to load repositories.");
-        return;
+      while (hasNext) {
+        const response = await fetch(
+          `/api/github/repositories?page=${currentPage}&per_page=100`,
+        );
+        const data = (await response.json()) as RepositoriesResponse;
+
+        if (!response.ok) {
+          setRepositories([]);
+          setMessage(data.error ?? "Failed to load repositories.");
+          return;
+        }
+
+        allRepositories.push(...(data.repositories ?? []));
+        resolvedTotalPages = data.totalPages ?? resolvedTotalPages;
+
+        const pageFromResponse = data.page ?? currentPage;
+        const perPage = data.perPage ?? 100;
+        hasNext =
+          resolvedTotalPages !== null
+            ? pageFromResponse < resolvedTotalPages
+            : (data.repositories?.length ?? 0) === perPage;
+        currentPage += 1;
       }
 
-      const fetchedRepositories = data.repositories ?? [];
-      const resolvedPage = data.page ?? targetPage;
-
-      setRepositories(fetchedRepositories);
-      setPage(resolvedPage);
-      setTotalPages(data.totalPages ?? null);
-      setHasNext(Boolean(data.hasNext));
-      setHasPrev(Boolean(data.hasPrev));
+      setRepositories(allRepositories);
+      setTotalPages(resolvedTotalPages);
       setSelectedRepo(
-        fetchedRepositories.length > 0 ? fetchedRepositories[0].fullName : "",
+        allRepositories.length > 0 ? allRepositories[0].fullName : "",
       );
     } catch {
       setRepositories([]);
@@ -78,7 +85,7 @@ export default function ConnectRepositoriesPage() {
   }
 
   useEffect(() => {
-    void loadRepositories(1);
+    void loadAllRepositories();
   }, []);
 
   useEffect(() => {
@@ -166,28 +173,9 @@ export default function ConnectRepositoriesPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-3">
-          <button
-            type="button"
-            onClick={() => void loadRepositories(page - 1)}
-            disabled={isLoading || !hasPrev}
-            className="w-full rounded-xl border border-white/15 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            onClick={() => void loadRepositories(page + 1)}
-            disabled={isLoading || !hasNext}
-            className="w-full rounded-xl border border-white/15 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Next
-          </button>
-        </div>
-
-        <p className="mt-3 text-xs text-zinc-400">
-          Page {page}
-          {totalPages ? ` of ${totalPages}` : ""}
+        <p className="mt-4 text-xs text-zinc-400">
+          Loaded {repositories.length} repositories
+          {totalPages ? ` across ${totalPages} pages` : ""}.
         </p>
 
         <button
