@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import FileSyncStatus, { type FileSyncStatusValue } from "@/components/file-sync-status";
+import { SaveIcon } from "@/components/icons";
 import { type PostFile } from "@/lib/workspace-client";
 
 type ExplorerStepProps = {
@@ -199,9 +200,15 @@ export default function ExplorerStep({
                   isSavingMarkdown ||
                   editorContent === markdownContent
                 }
-                className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                title={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
+                aria-label={isSavingMarkdown ? "Saving markdown" : "Save markdown"}
+                className="shrink-0 rounded-lg border border-white/15 bg-white/95 px-2.5 py-1.5 text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingMarkdown ? "Saving..." : "Save"}
+                {isSavingMarkdown ? (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
+                ) : (
+                  <SaveIcon className="h-3.5 w-3.5 fill-current" />
+                )}
               </button>
             </div>
           </div>
@@ -219,9 +226,15 @@ export default function ExplorerStep({
                 type="button"
                 onClick={onRenameMarkdown}
                 disabled={isRenameSaveDisabled}
-                className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                title={isRenamingMarkdown ? "Renaming" : "Save filename"}
+                aria-label={isRenamingMarkdown ? "Renaming" : "Save filename"}
+                className="shrink-0 rounded-lg border border-white/15 bg-white/95 px-2.5 py-1.5 text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isRenamingMarkdown ? "Renaming..." : "Save Name"}
+                {isRenamingMarkdown ? (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
+                ) : (
+                  <SaveIcon className="h-3.5 w-3.5 fill-current" />
+                )}
               </button>
               <button
                 type="button"
