@@ -10,6 +10,56 @@ type GithubCreateRepositoryResponse = {
   message?: string;
 };
 
+type GithubRepository = {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+};
+
+export async function GET(request: NextRequest) {
+  const token = request.cookies.get("gh_oauth_token")?.value;
+
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const githubResponse = await fetch(
+    "https://api.github.com/user/repos?sort=updated&per_page=100",
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "blogex",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!githubResponse.ok) {
+    const errorData = (await githubResponse.json()) as { message?: string };
+    return NextResponse.json(
+      { error: errorData.message ?? "Failed to fetch repositories." },
+      { status: githubResponse.status },
+    );
+  }
+
+  const githubData = (await githubResponse.json()) as GithubRepository[];
+
+  return NextResponse.json(
+    {
+      repositories: githubData.map((repo) => ({
+        id: repo.id,
+        name: repo.name,
+        fullName: repo.full_name,
+        private: repo.private,
+      })),
+    },
+    { status: 200 },
+  );
+}
+
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
