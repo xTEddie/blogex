@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import matter from "gray-matter";
 import type { FileSyncStatusValue } from "@/components/file-sync-status";
+import { HomeIcon } from "@/components/icons";
 import BranchStep from "@/components/workspace/branch-step";
 import ExplorerStep from "@/components/workspace/explorer-step";
 import RepositoryStep from "@/components/workspace/repository-step";
@@ -909,9 +910,10 @@ export default function ConnectRepositoriesPage() {
             </Link>
             <Link
               href="/user"
-              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
-              Back
+              <HomeIcon className="h-3.5 w-3.5 fill-current" />
+              Home
             </Link>
           </div>
         </div>

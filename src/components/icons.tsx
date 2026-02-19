@@ -57,3 +57,11 @@ export function CompareIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function HomeIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <path d="M8 1.5 1.5 7h1.75v7h4.5V9.5h.5V14h4.5V7H14.5L8 1.5z" />
+    </svg>
+  );
+}
