@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import matter from "gray-matter";
+import remarkGfm from "remark-gfm";
 
 type Repository = {
   id: number;
@@ -62,6 +65,7 @@ export default function ConnectRepositoriesPage() {
   const [selectedPostName, setSelectedPostName] = useState("");
   const [markdownContent, setMarkdownContent] = useState("");
   const [editorContent, setEditorContent] = useState("");
+  const [editorView, setEditorView] = useState<"edit" | "preview">("edit");
 
   const [step, setStep] = useState<"repository" | "branch" | "explorer">(
     "repository",
@@ -105,6 +109,24 @@ export default function ConnectRepositoriesPage() {
     }
     return postFiles.filter((file) => file.name.toLowerCase().includes(query));
   }, [postFiles, postSearchQuery]);
+  const parsedEditorMarkdown = useMemo(() => {
+    try {
+      const parsed = matter(editorContent);
+      return {
+        body: parsed.content,
+        frontmatter: parsed.data as Record<string, unknown>,
+      };
+    } catch {
+      return {
+        body: editorContent,
+        frontmatter: {} as Record<string, unknown>,
+      };
+    }
+  }, [editorContent]);
+  const frontmatterEntries = useMemo(
+    () => Object.entries(parsedEditorMarkdown.frontmatter),
+    [parsedEditorMarkdown.frontmatter],
+  );
 
   async function loadAllRepositories() {
     setIsLoadingRepositories(true);
@@ -153,6 +175,7 @@ export default function ConnectRepositoriesPage() {
       setSelectedPostName("");
       setMarkdownContent("");
       setEditorContent("");
+      setEditorView("edit");
     } catch {
       setRepositories([]);
       setMessage("Request failed while loading repositories.");
@@ -244,6 +267,7 @@ export default function ConnectRepositoriesPage() {
       setEditorContent(data.markdown ?? "");
       setSelectedPostPath(data.path ?? filePath);
       setSelectedPostName(data.name ?? filePath.split("/").pop() ?? filePath);
+      setEditorView("edit");
     } catch {
       setMessage("Request failed while loading markdown content.");
       setMarkdownContent("");
@@ -582,29 +606,81 @@ export default function ConnectRepositoriesPage() {
                   <p className="text-sm text-zinc-200">
                     {selectedPostName || "Markdown editor"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveMarkdown()}
-                    disabled={
-                      !selectedPostPath ||
-                      isLoadingMarkdown ||
-                      isSavingMarkdown ||
-                      editorContent === markdownContent
-                    }
-                    className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isSavingMarkdown ? "Saving..." : "Save"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg border border-white/15 bg-white/10 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditorView("edit")}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                          editorView === "edit"
+                            ? "bg-white text-zinc-900"
+                            : "text-zinc-200 hover:bg-white/15"
+                        }`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditorView("preview")}
+                        className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                          editorView === "preview"
+                            ? "bg-white text-zinc-900"
+                            : "text-zinc-200 hover:bg-white/15"
+                        }`}
+                      >
+                        Preview
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveMarkdown()}
+                      disabled={
+                        !selectedPostPath ||
+                        isLoadingMarkdown ||
+                        isSavingMarkdown ||
+                        editorContent === markdownContent
+                      }
+                      className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSavingMarkdown ? "Saving..." : "Save"}
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-[420px] overflow-auto px-4 py-3">
                   {isLoadingMarkdown ? (
                     <p className="text-sm text-zinc-300">Loading file content...</p>
-                  ) : selectedPostPath ? (
+                  ) : selectedPostPath && editorView === "edit" ? (
                     <textarea
                       value={editorContent}
                       onChange={(event) => setEditorContent(event.target.value)}
                       className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
                     />
+                  ) : selectedPostPath && editorView === "preview" ? (
+                    <div className="markdown-preview text-sm leading-6 text-zinc-100">
+                      {frontmatterEntries.length > 0 ? (
+                        <div className="mb-4 rounded-lg border border-white/15 bg-zinc-950/80 p-3">
+                          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
+                            Front Matter
+                          </p>
+                          <div className="space-y-1 text-xs text-zinc-200">
+                            {frontmatterEntries.map(([key, value]) => (
+                              <p key={key}>
+                                <span className="text-zinc-400">{key}:</span>{" "}
+                                <span className="font-mono">
+                                  {typeof value === "string"
+                                    ? value
+                                    : JSON.stringify(value)}
+                                </span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {parsedEditorMarkdown.body}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     <p className="text-sm text-zinc-300">
                       Select a markdown file to view its content.
