@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: "read:user user:email",
+    scope: "read:user user:email repo",
     state,
     allow_signup: "true",
   });
