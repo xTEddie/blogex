@@ -18,13 +18,27 @@ type RepositoriesResponse = {
   error?: string;
 };
 
+type Branch = {
+  name: string;
+};
+
+type BranchesResponse = {
+  branches?: Branch[];
+  error?: string;
+};
+
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedRepo, setSelectedRepo] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [branchSearchQuery, setBranchSearchQuery] = useState("");
   const [totalPages, setTotalPages] = useState<number | null>(null);
+  const [step, setStep] = useState<"repository" | "branch">("repository");
   const filteredRepositories = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
@@ -36,6 +50,17 @@ export default function ConnectRepositoriesPage() {
       repo.fullName.toLowerCase().includes(query),
     );
   }, [repositories, searchQuery]);
+  const filteredBranches = useMemo(() => {
+    const query = branchSearchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return branches;
+    }
+
+    return branches.filter((branch) =>
+      branch.name.toLowerCase().includes(query),
+    );
+  }, [branches, branchSearchQuery]);
 
   async function loadAllRepositories() {
     setIsLoading(true);
@@ -76,6 +101,9 @@ export default function ConnectRepositoriesPage() {
       setSelectedRepo(
         allRepositories.length > 0 ? allRepositories[0].fullName : "",
       );
+      setStep("repository");
+      setBranches([]);
+      setSelectedBranch("");
     } catch {
       setRepositories([]);
       setMessage("Request failed. Please try again.");
@@ -98,14 +126,64 @@ export default function ConnectRepositoriesPage() {
       setSelectedRepo(filteredRepositories[0].fullName);
     }
   }, [filteredRepositories, selectedRepo]);
+  useEffect(() => {
+    if (filteredBranches.length === 0) {
+      setSelectedBranch("");
+      return;
+    }
 
-  function handleConnect() {
+    if (!filteredBranches.some((branch) => branch.name === selectedBranch)) {
+      setSelectedBranch(filteredBranches[0].name);
+    }
+  }, [filteredBranches, selectedBranch]);
+
+  async function handleNext() {
     if (!selectedRepo) {
       setMessage("Select a repository first.");
       return;
     }
 
-    setMessage(`Connected to ${selectedRepo} (no-op for now).`);
+    setIsLoadingBranches(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/github/repositories/branches?repo=${encodeURIComponent(selectedRepo)}`,
+      );
+      const data = (await response.json()) as BranchesResponse;
+
+      if (!response.ok) {
+        setMessage(data.error ?? "Failed to load branches.");
+        setBranches([]);
+        return;
+      }
+
+      const fetchedBranches = data.branches ?? [];
+      setBranches(fetchedBranches);
+      setSelectedBranch(fetchedBranches.length > 0 ? fetchedBranches[0].name : "");
+      setStep("branch");
+    } catch {
+      setBranches([]);
+      setMessage("Request failed. Please try again.");
+    } finally {
+      setIsLoadingBranches(false);
+    }
+  }
+
+  function handleBackToRepositories() {
+    setStep("repository");
+    setMessage(null);
+  }
+
+  function handleConnect() {
+    if (!selectedRepo || !selectedBranch) {
+      setMessage("Select a repository and branch first.");
+      return;
+    }
+
+    setMessage(
+      `Connected to ${selectedRepo} on ${selectedBranch} (no-op for now).`,
+    );
   }
 
   return (
@@ -127,65 +205,129 @@ export default function ConnectRepositoriesPage() {
           Select a repository and click connect.
         </p>
 
-        <div className="mt-6">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-            Repository
-          </p>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search repositories on this page"
-            className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-          />
-          <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
-            {isLoading ? (
-              <p className="px-3 py-2 text-sm text-zinc-300">
-                Loading repositories...
-              </p>
-            ) : filteredRepositories.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-zinc-300">
-                No repositories match your search
-              </p>
-            ) : (
-              filteredRepositories.map((repo) => {
-                const isSelected = selectedRepo === repo.fullName;
+        {step === "repository" ? (
+          <div className="mt-6">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
+              Repository
+            </p>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search repositories"
+              className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+            />
+            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+              {isLoading ? (
+                <p className="px-3 py-2 text-sm text-zinc-300">
+                  Loading repositories...
+                </p>
+              ) : filteredRepositories.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-zinc-300">
+                  No repositories match your search
+                </p>
+              ) : (
+                filteredRepositories.map((repo) => {
+                  const isSelected = selectedRepo === repo.fullName;
 
-                return (
-                  <button
-                    key={repo.id}
-                    type="button"
-                    onClick={() => setSelectedRepo(repo.fullName)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                      isSelected
-                        ? "border-white/45 bg-white/15 text-white"
-                        : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
-                    }`}
-                  >
-                    <span className="truncate pr-3">{repo.fullName}</span>
-                    <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-300">
-                      {repo.private ? "Private" : "Public"}
-                    </span>
-                  </button>
-                );
-              })
-            )}
+                  return (
+                    <button
+                      key={repo.id}
+                      type="button"
+                      onClick={() => setSelectedRepo(repo.fullName)}
+                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                        isSelected
+                          ? "border-white/45 bg-white/15 text-white"
+                          : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="truncate pr-3">{repo.fullName}</span>
+                      <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] uppercase tracking-wide text-zinc-300">
+                        {repo.private ? "Private" : "Public"}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-300">
+                Branch
+              </p>
+              <button
+                type="button"
+                onClick={handleBackToRepositories}
+                className="rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-white/15"
+              >
+                Change repo
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-zinc-400">Selected: {selectedRepo}</p>
+            <input
+              type="text"
+              value={branchSearchQuery}
+              onChange={(event) => setBranchSearchQuery(event.target.value)}
+              placeholder="Search branches"
+              className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+            />
+            <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
+              {isLoadingBranches ? (
+                <p className="px-3 py-2 text-sm text-zinc-300">Loading branches...</p>
+              ) : filteredBranches.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-zinc-300">
+                  No branches match your search
+                </p>
+              ) : (
+                filteredBranches.map((branch) => {
+                  const isSelected = selectedBranch === branch.name;
+
+                  return (
+                    <button
+                      key={branch.name}
+                      type="button"
+                      onClick={() => setSelectedBranch(branch.name)}
+                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
+                        isSelected
+                          ? "border-white/45 bg-white/15 text-white"
+                          : "border-white/10 bg-zinc-900 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="truncate pr-3">{branch.name}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         <p className="mt-4 text-xs text-zinc-400">
           Loaded {repositories.length} repositories
           {totalPages ? ` across ${totalPages} pages` : ""}.
         </p>
 
-        <button
-          type="button"
-          onClick={handleConnect}
-          disabled={isLoading || !selectedRepo}
-          className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          Connect
-        </button>
+        {step === "repository" ? (
+          <button
+            type="button"
+            onClick={() => void handleNext()}
+            disabled={isLoading || !selectedRepo || isLoadingBranches}
+            className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isLoadingBranches ? "Loading branches..." : "Next"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={isLoadingBranches || !selectedBranch}
+            className="mt-6 w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            Connect
+          </button>
+        )}
 
         {message ? <p className="mt-3 text-sm text-zinc-200">{message}</p> : null}
       </section>
