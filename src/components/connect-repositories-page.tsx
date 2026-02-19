@@ -71,8 +71,16 @@ type PersistedConnectState = {
   updatedAt: number;
 };
 
+type RepositoryCacheState = {
+  repositories: Repository[];
+  totalPages: number | null;
+  updatedAt: number;
+};
+
 const CONNECT_SESSION_KEY = "blogex:connect-session";
 const CONNECT_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
+const REPOSITORY_CACHE_KEY = "blogex:repositories-cache";
+const REPOSITORY_CACHE_TTL_MS = 1000 * 60 * 60 * 12;
 
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
@@ -154,38 +162,113 @@ export default function ConnectRepositoriesPage() {
     [parsedEditorMarkdown.frontmatter],
   );
 
-  async function loadAllRepositories(restoredState?: PersistedConnectState) {
+  async function loadRepositoriesFromApi() {
+    const allRepositories: Repository[] = [];
+    let currentPage = 1;
+    let hasNext = true;
+    let resolvedTotalPages: number | null = null;
+
+    while (hasNext) {
+      const response = await fetch(
+        `/api/github/repositories?page=${currentPage}&per_page=100`,
+      );
+      const data = (await response.json()) as RepositoriesResponse;
+
+      if (!response.ok) {
+        return {
+          ok: false as const,
+          error: data.error ?? "Failed to load repositories.",
+        };
+      }
+
+      allRepositories.push(...(data.repositories ?? []));
+      resolvedTotalPages = data.totalPages ?? resolvedTotalPages;
+
+      const pageFromResponse = data.page ?? currentPage;
+      const perPage = data.perPage ?? 100;
+      hasNext =
+        resolvedTotalPages !== null
+          ? pageFromResponse < resolvedTotalPages
+          : (data.repositories?.length ?? 0) === perPage;
+      currentPage += 1;
+    }
+
+    return {
+      ok: true as const,
+      repositories: allRepositories,
+      totalPages: resolvedTotalPages,
+    };
+  }
+
+  function readRepositoryCache(): RepositoryCacheState | null {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(REPOSITORY_CACHE_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as RepositoryCacheState;
+      const isExpired =
+        !parsed.updatedAt || Date.now() - parsed.updatedAt > REPOSITORY_CACHE_TTL_MS;
+
+      if (isExpired || !Array.isArray(parsed.repositories)) {
+        window.localStorage.removeItem(REPOSITORY_CACHE_KEY);
+        return null;
+      }
+
+      return parsed;
+    } catch {
+      window.localStorage.removeItem(REPOSITORY_CACHE_KEY);
+      return null;
+    }
+  }
+
+  function writeRepositoryCache(repositoriesToCache: Repository[], pages: number | null) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const payload: RepositoryCacheState = {
+      repositories: repositoriesToCache,
+      totalPages: pages,
+      updatedAt: Date.now(),
+    };
+
+    window.localStorage.setItem(REPOSITORY_CACHE_KEY, JSON.stringify(payload));
+  }
+
+  async function loadAllRepositories(
+    restoredState?: PersistedConnectState,
+    options?: { forceRefresh?: boolean },
+  ) {
     setIsLoadingRepositories(true);
     setMessage(null);
 
     try {
-      const allRepositories: Repository[] = [];
-      let currentPage = 1;
-      let hasNext = true;
+      let allRepositories: Repository[] = [];
       let resolvedTotalPages: number | null = null;
 
-      while (hasNext) {
-        const response = await fetch(
-          `/api/github/repositories?page=${currentPage}&per_page=100`,
-        );
-        const data = (await response.json()) as RepositoriesResponse;
+      const cachedRepositories =
+        options?.forceRefresh === true ? null : readRepositoryCache();
 
-        if (!response.ok) {
-          setMessage(data.error ?? "Failed to load repositories.");
+      if (cachedRepositories) {
+        allRepositories = cachedRepositories.repositories;
+        resolvedTotalPages = cachedRepositories.totalPages;
+      } else {
+        const result = await loadRepositoriesFromApi();
+        if (!result.ok) {
+          setMessage(result.error);
           setRepositories([]);
           return;
         }
 
-        allRepositories.push(...(data.repositories ?? []));
-        resolvedTotalPages = data.totalPages ?? resolvedTotalPages;
-
-        const pageFromResponse = data.page ?? currentPage;
-        const perPage = data.perPage ?? 100;
-        hasNext =
-          resolvedTotalPages !== null
-            ? pageFromResponse < resolvedTotalPages
-            : (data.repositories?.length ?? 0) === perPage;
-        currentPage += 1;
+        allRepositories = result.repositories;
+        resolvedTotalPages = result.totalPages;
+        writeRepositoryCache(allRepositories, resolvedTotalPages);
       }
 
       setRepositories(allRepositories);
@@ -480,6 +563,10 @@ export default function ConnectRepositoriesPage() {
     setIsResuming(false);
   }
 
+  async function handleRefreshRepositories() {
+    await loadAllRepositories(undefined, { forceRefresh: true });
+  }
+
   async function handleConnectToExplorer() {
     if (!selectedRepo || !selectedBranch) {
       setMessage("Select a repository and branch first.");
@@ -653,13 +740,23 @@ export default function ConnectRepositoriesPage() {
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
               Repository
             </p>
-            <input
-              type="text"
-              value={repoSearchQuery}
-              onChange={(event) => setRepoSearchQuery(event.target.value)}
-              placeholder="Search repositories"
-              className="mb-3 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-            />
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="text"
+                value={repoSearchQuery}
+                onChange={(event) => setRepoSearchQuery(event.target.value)}
+                placeholder="Search repositories"
+                className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+              />
+              <button
+                type="button"
+                onClick={() => void handleRefreshRepositories()}
+                disabled={isLoadingRepositories}
+                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60 sm:shrink-0"
+              >
+                {isLoadingRepositories ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
             <div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
               {isLoadingRepositories ? (
                 <p className="px-3 py-2 text-sm text-zinc-300">
