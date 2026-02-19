@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import FileSyncStatus, { type FileSyncStatusValue } from "@/components/file-sync-status";
-import { SaveIcon } from "@/components/icons";
+import { RenameIcon, SaveIcon } from "@/components/icons";
 import { type PostFile } from "@/lib/workspace-client";
 
 type ExplorerStepProps = {
@@ -157,16 +157,18 @@ export default function ExplorerStep({
             <div className="flex items-center gap-2">
               <p className="text-sm text-zinc-200">{selectedPostName || "Markdown editor"}</p>
               {selectedPostPath ? <FileSyncStatus status={targetStatus} /> : null}
-            </div>
-            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={isRenameEditorOpen ? onCloseRenameEditor : onOpenRenameEditor}
                 disabled={!selectedPostPath || isRenamingMarkdown}
-                className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                title={isRenameEditorOpen ? "Close rename" : "Rename filename"}
+                aria-label={isRenameEditorOpen ? "Close rename" : "Rename filename"}
+                className="shrink-0 rounded-md border border-white/15 bg-white/10 px-1.5 py-1 text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isRenameEditorOpen ? "Close Rename" : "Rename"}
+                <RenameIcon className="h-3.5 w-3.5 fill-current" />
               </button>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="rounded-lg border border-white/15 bg-white/10 p-1">
                 <button
                   type="button"

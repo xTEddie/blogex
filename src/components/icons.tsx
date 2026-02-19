@@ -42,3 +42,10 @@ export function DotIcon({ className }: IconProps) {
   );
 }
 
+export function RenameIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
+      <path d="m11.7 1.3 3 3-8.9 8.9H2.9V10l8.8-8.7zM10.3 2.7 4.1 8.9l3 3 6.2-6.2-3-3zM2 14h12v1H2z" />
+    </svg>
+  );
+}
