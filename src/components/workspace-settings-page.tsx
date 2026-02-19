@@ -3,46 +3,19 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
+import {
+  fetchRepositoryConfig,
+  fetchSyncMarkdownFiles,
+  pullSyncMarkdown,
+  saveRepositoryConfig,
+  type BlogexConfig,
+  type SyncFile,
+} from "@/lib/workspace-client";
 
 type PersistedConnectState = {
   selectedRepo?: string;
   selectedBranch?: string;
   updatedAt: number;
-};
-
-type BlogexConfig = {
-  owner: string;
-  targetRepo: string;
-  targetBranch: string;
-  targetDirectory: string;
-};
-
-type GetConfigResponse = {
-  exists?: boolean;
-  config?: Partial<BlogexConfig> | null;
-  error?: string;
-};
-
-type SaveConfigResponse = {
-  success?: boolean;
-  error?: string;
-};
-
-type SyncFile = {
-  name: string;
-  path: string;
-  size: number;
-};
-
-type SyncListResponse = {
-  files?: SyncFile[];
-  error?: string;
-};
-
-type SyncPullResponse = {
-  success?: boolean;
-  message?: string;
-  error?: string;
 };
 
 const DEFAULT_CONFIG: BlogexConfig = {
@@ -76,15 +49,14 @@ export default function WorkspaceSettingsPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/config?repo=${encodeURIComponent(nextRepo)}&branch=${encodeURIComponent(nextBranch)}`,
-      );
-      const data = (await response.json()) as GetConfigResponse;
+      const result = await fetchRepositoryConfig(nextRepo, nextBranch);
 
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to load blogex.config.json.");
+      if (!result.ok) {
+        setMessage(result.error);
         return;
       }
+
+      const data = result.data;
 
       if (!data.exists || !data.config) {
         setConfig(DEFAULT_CONFIG);
@@ -150,21 +122,14 @@ export default function WorkspaceSettingsPage() {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/github/repositories/config", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          repo: trimmedRepo,
-          branch: trimmedBranch,
-          config,
-        }),
+      const result = await saveRepositoryConfig({
+        repo: trimmedRepo,
+        branch: trimmedBranch,
+        config,
       });
 
-      const data = (await response.json()) as SaveConfigResponse;
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to save blogex.config.json.");
+      if (!result.ok) {
+        setMessage(result.error);
         return;
       }
 
@@ -191,19 +156,20 @@ export default function WorkspaceSettingsPage() {
     setSyncMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/sync?sourceRepo=${encodeURIComponent(sourceRepo)}&sourceBranch=${encodeURIComponent(sourceBranch)}&sourceDirectory=${encodeURIComponent(sourceDirectory)}`,
-      );
-      const data = (await response.json()) as SyncListResponse;
+      const result = await fetchSyncMarkdownFiles({
+        sourceRepo,
+        sourceBranch,
+        sourceDirectory,
+      });
 
-      if (!response.ok) {
+      if (!result.ok) {
         setSyncFiles([]);
         setSelectedSyncPath("");
-        setSyncMessage(data.error ?? "Failed to load sync markdown files.");
+        setSyncMessage(result.error);
         return;
       }
 
-      const files = data.files ?? [];
+      const files = result.files;
       setSyncFiles(files);
       setSelectedSyncPath(files[0]?.path ?? "");
       setSyncMessage(files.length === 0 ? "No markdown files found." : null);
@@ -237,29 +203,21 @@ export default function WorkspaceSettingsPage() {
     setSyncMessage(null);
 
     try {
-      const response = await fetch("/api/github/repositories/sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sourceRepo,
-          sourceBranch,
-          sourceDirectory,
-          sourcePath: selectedSyncPath,
-          targetRepo,
-          targetBranch,
-        }),
+      const result = await pullSyncMarkdown({
+        sourceRepo,
+        sourceBranch,
+        sourceDirectory,
+        sourcePath: selectedSyncPath,
+        targetRepo,
+        targetBranch,
       });
 
-      const data = (await response.json()) as SyncPullResponse;
-
-      if (!response.ok) {
-        setSyncMessage(data.error ?? "Failed to sync markdown.");
+      if (!result.ok) {
+        setSyncMessage(result.error);
         return;
       }
 
-      setSyncMessage(data.message ?? "Markdown synced successfully.");
+      setSyncMessage(result.data.message ?? "Markdown synced successfully.");
     } catch {
       setSyncMessage("Request failed while syncing markdown.");
     } finally {

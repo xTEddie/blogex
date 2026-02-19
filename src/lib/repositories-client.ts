@@ -9,6 +9,7 @@ export type CreateRepositoryResponse = {
   error?: string;
 };
 
+/** Create a new GitHub repository for the current authenticated user. */
 export async function createRepository(
   payload: CreateRepositoryPayload,
 ): Promise<CreateRepositoryResponse> {
@@ -33,4 +34,3 @@ export async function createRepository(
 
   return data;
 }
-

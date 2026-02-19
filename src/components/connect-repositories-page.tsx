@@ -10,78 +10,19 @@ import FileSyncStatus, {
 } from "@/components/file-sync-status";
 import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
-
-type Repository = {
-  id: number;
-  name: string;
-  fullName: string;
-  private: boolean;
-};
-
-type Branch = {
-  name: string;
-};
-
-type PostFile = {
-  name: string;
-  path: string;
-  size: number;
-};
-
-type RepositoriesResponse = {
-  repositories?: Repository[];
-  page?: number;
-  perPage?: number;
-  totalPages?: number | null;
-  error?: string;
-};
-
-type BranchesResponse = {
-  branches?: Branch[];
-  error?: string;
-};
-
-type PostFilesResponse = {
-  files?: PostFile[];
-  error?: string;
-};
-
-type MarkdownContentResponse = {
-  name?: string;
-  path?: string;
-  markdown?: string;
-  error?: string;
-};
-
-type SaveMarkdownResponse = {
-  success?: boolean;
-  message?: string;
-  error?: string;
-};
-
-type CreateMarkdownResponse = {
-  success?: boolean;
-  path?: string;
-  name?: string;
-  markdown?: string;
-  message?: string;
-  error?: string;
-};
-
-type BlogexConfigResponse = {
-  exists?: boolean;
-  config?: {
-    targetRepo?: string;
-    targetBranch?: string;
-    targetDirectory?: string;
-  } | null;
-  error?: string;
-};
-
-type SyncStatusResponse = {
-  exists?: boolean;
-  error?: string;
-};
+import {
+  createMarkdownFile,
+  fetchMarkdownContent,
+  fetchRepositoriesPage,
+  fetchRepositoryBranches,
+  fetchRepositoryConfig,
+  fetchRepositoryPosts,
+  fetchTargetFileSyncStatus,
+  saveMarkdownContent,
+  type Branch,
+  type PostFile,
+  type Repository,
+} from "@/lib/workspace-client";
 
 type TargetConfig = {
   targetRepo: string;
@@ -198,27 +139,24 @@ export default function ConnectRepositoriesPage() {
     let resolvedTotalPages: number | null = null;
 
     while (hasNext) {
-      const response = await fetch(
-        `/api/github/repositories?page=${currentPage}&per_page=100`,
-      );
-      const data = (await response.json()) as RepositoriesResponse;
+      const result = await fetchRepositoriesPage(currentPage, 100);
 
-      if (!response.ok) {
+      if (!result.ok) {
         return {
           ok: false as const,
-          error: data.error ?? "Failed to load repositories.",
+          error: result.error,
         };
       }
 
-      allRepositories.push(...(data.repositories ?? []));
-      resolvedTotalPages = data.totalPages ?? resolvedTotalPages;
+      allRepositories.push(...result.repositories);
+      resolvedTotalPages = result.totalPages ?? resolvedTotalPages;
 
-      const pageFromResponse = data.page ?? currentPage;
-      const perPage = data.perPage ?? 100;
+      const pageFromResponse = result.page;
+      const perPage = result.perPage;
       hasNext =
         resolvedTotalPages !== null
           ? pageFromResponse < resolvedTotalPages
-          : (data.repositories?.length ?? 0) === perPage;
+          : result.repositories.length === perPage;
       currentPage += 1;
     }
 
@@ -388,18 +326,15 @@ export default function ConnectRepositoriesPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/branches?repo=${encodeURIComponent(repoFullName)}`,
-      );
-      const data = (await response.json()) as BranchesResponse;
+      const result = await fetchRepositoryBranches(repoFullName);
 
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to load branches.");
+      if (!result.ok) {
+        setMessage(result.error);
         setBranches([]);
         return null;
       }
 
-      const fetchedBranches = data.branches ?? [];
+      const fetchedBranches = result.branches;
       setBranches(fetchedBranches);
       setSelectedBranch(fetchedBranches.length > 0 ? fetchedBranches[0].name : "");
       return fetchedBranches;
@@ -417,18 +352,15 @@ export default function ConnectRepositoriesPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/posts?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}`,
-      );
-      const data = (await response.json()) as PostFilesResponse;
+      const result = await fetchRepositoryPosts(repoFullName, branchName);
 
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to load markdown files.");
+      if (!result.ok) {
+        setMessage(result.error);
         setPostFiles([]);
         return null;
       }
 
-      const fetchedFiles = data.files ?? [];
+      const fetchedFiles = result.files;
       setPostFiles(fetchedFiles);
       setSelectedPostPath(fetchedFiles.length > 0 ? fetchedFiles[0].path : "");
       setSelectedPostName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
@@ -451,17 +383,15 @@ export default function ConnectRepositoriesPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/posts/content?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}&path=${encodeURIComponent(filePath)}`,
-      );
-      const data = (await response.json()) as MarkdownContentResponse;
+      const result = await fetchMarkdownContent(repoFullName, branchName, filePath);
 
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to load markdown content.");
+      if (!result.ok) {
+        setMessage(result.error);
         setMarkdownContent("");
         return;
       }
 
+      const data = result.data;
       setMarkdownContent(data.markdown ?? "");
       setEditorContent(data.markdown ?? "");
       setSelectedPostPath(data.path ?? filePath);
@@ -478,17 +408,15 @@ export default function ConnectRepositoriesPage() {
 
   async function loadTargetConfig(repoFullName: string, branchName: string) {
     try {
-      const response = await fetch(
-        `/api/github/repositories/config?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branchName)}`,
-      );
-      const data = (await response.json()) as BlogexConfigResponse;
+      const result = await fetchRepositoryConfig(repoFullName, branchName);
 
-      if (!response.ok || !data.exists || !data.config) {
+      if (!result.ok || !result.data.exists || !result.data.config) {
         setTargetConfig(null);
         setTargetStatus("unavailable");
         return null;
       }
 
+      const data = result.data;
       const nextConfig: TargetConfig = {
         targetRepo: data.config.targetRepo?.trim() ?? "",
         targetBranch: data.config.targetBranch?.trim() ?? "",
@@ -526,21 +454,23 @@ export default function ConnectRepositoriesPage() {
     setTargetStatus("checking");
 
     try {
-      const response = await fetch(
-        `/api/github/repositories/sync/status?targetRepo=${encodeURIComponent(config.targetRepo)}&targetBranch=${encodeURIComponent(config.targetBranch)}&targetDirectory=${encodeURIComponent(config.targetDirectory)}&sourcePath=${encodeURIComponent(filePath)}`,
-      );
-      const data = (await response.json()) as SyncStatusResponse;
+      const result = await fetchTargetFileSyncStatus({
+        targetRepo: config.targetRepo,
+        targetBranch: config.targetBranch,
+        targetDirectory: config.targetDirectory,
+        sourcePath: filePath,
+      });
 
       if (syncStatusRequestId.current !== requestId) {
         return;
       }
 
-      if (!response.ok) {
-        setTargetStatus(data.error ? "error" : "unavailable");
+      if (!result.ok) {
+        setTargetStatus(result.error ? "error" : "unavailable");
         return;
       }
 
-      setTargetStatus(data.exists ? "exists" : "missing");
+      setTargetStatus(result.data.exists ? "exists" : "missing");
     } catch {
       if (syncStatusRequestId.current === requestId) {
         setTargetStatus("error");
@@ -716,28 +646,21 @@ export default function ConnectRepositoriesPage() {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/github/repositories/posts/content", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          repo: selectedRepo,
-          branch: selectedBranch,
-          path: selectedPostPath,
-          markdown: editorContent,
-          message: createUpdateMarkdownCommitMessage(selectedPostName),
-        }),
+      const result = await saveMarkdownContent({
+        repo: selectedRepo,
+        branch: selectedBranch,
+        path: selectedPostPath,
+        markdown: editorContent,
+        message: createUpdateMarkdownCommitMessage(selectedPostName),
       });
 
-      const data = (await response.json()) as SaveMarkdownResponse;
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to save markdown file.");
+      if (!result.ok) {
+        setMessage(result.error);
         return;
       }
 
       setMarkdownContent(editorContent);
-      setMessage(data.message ?? "Saved successfully.");
+      setMessage(result.data.message ?? "Saved successfully.");
     } catch {
       setMessage("Request failed while saving markdown file.");
     } finally {
@@ -761,23 +684,18 @@ export default function ConnectRepositoriesPage() {
     setMessage(null);
 
     try {
-      const response = await fetch("/api/github/repositories/posts/content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          repo: selectedRepo,
-          branch: selectedBranch,
-          title: inputTitle,
-        }),
+      const result = await createMarkdownFile({
+        repo: selectedRepo,
+        branch: selectedBranch,
+        title: inputTitle,
       });
 
-      const data = (await response.json()) as CreateMarkdownResponse;
-      if (!response.ok) {
-        setMessage(data.error ?? "Failed to create markdown file.");
+      if (!result.ok) {
+        setMessage(result.error);
         return;
       }
+
+      const data = result.data;
 
       const refreshedFiles = await loadPostFiles(selectedRepo, selectedBranch);
       if (refreshedFiles && data.path) {
