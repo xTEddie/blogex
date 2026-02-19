@@ -18,6 +18,14 @@ type ExplorerStepProps = {
   selectedPostPath: string;
   onOpenFile: (file: PostFile) => void;
   selectedPostName: string;
+  renameFileName: string;
+  onRenameFileNameChange: (value: string) => void;
+  isRenameEditorOpen: boolean;
+  onOpenRenameEditor: () => void;
+  onCloseRenameEditor: () => void;
+  onRenameMarkdown: () => void;
+  isRenameSaveDisabled: boolean;
+  isRenamingMarkdown: boolean;
   targetStatus: FileSyncStatusValue;
   editorView: "edit" | "preview";
   onEditorViewChange: (view: "edit" | "preview") => void;
@@ -46,6 +54,14 @@ export default function ExplorerStep({
   selectedPostPath,
   onOpenFile,
   selectedPostName,
+  renameFileName,
+  onRenameFileNameChange,
+  isRenameEditorOpen,
+  onOpenRenameEditor,
+  onCloseRenameEditor,
+  onRenameMarkdown,
+  isRenameSaveDisabled,
+  isRenamingMarkdown,
   targetStatus,
   editorView,
   onEditorViewChange,
@@ -142,6 +158,14 @@ export default function ExplorerStep({
               {selectedPostPath ? <FileSyncStatus status={targetStatus} /> : null}
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={isRenameEditorOpen ? onCloseRenameEditor : onOpenRenameEditor}
+                disabled={!selectedPostPath || isRenamingMarkdown}
+                className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRenameEditorOpen ? "Close Rename" : "Rename"}
+              </button>
               <div className="rounded-lg border border-white/15 bg-white/10 p-1">
                 <button
                   type="button"
@@ -181,6 +205,34 @@ export default function ExplorerStep({
               </button>
             </div>
           </div>
+          {isRenameEditorOpen ? (
+            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+              <input
+                type="text"
+                value={renameFileName}
+                onChange={(event) => onRenameFileNameChange(event.target.value)}
+                placeholder="new-file-name.md"
+                disabled={!selectedPostPath || isRenamingMarkdown}
+                className="w-full rounded-lg border border-white/15 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <button
+                type="button"
+                onClick={onRenameMarkdown}
+                disabled={isRenameSaveDisabled}
+                className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRenamingMarkdown ? "Renaming..." : "Save Name"}
+              </button>
+              <button
+                type="button"
+                onClick={onCloseRenameEditor}
+                disabled={isRenamingMarkdown}
+                className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : null}
           <div className="max-h-[420px] overflow-auto px-4 py-3">
             {isLoadingMarkdown ? (
               <p className="text-sm text-zinc-300">Loading file content...</p>

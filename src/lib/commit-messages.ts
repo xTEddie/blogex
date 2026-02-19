@@ -26,3 +26,11 @@ export function createSyncMarkdownCommitMessage(fileName: string, sourceRepo: st
 export function createUpdateBlogexConfigCommitMessage() {
   return "chore: update blogex config";
 }
+
+export function createRenameMarkdownCommitMessage(nextFileName: string) {
+  return `chore: rename markdown to ${nextFileName}`;
+}
+
+export function createDeleteOldMarkdownAfterRenameCommitMessage(path: string) {
+  return `chore: remove old markdown ${path}`;
+}

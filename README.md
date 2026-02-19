@@ -84,6 +84,16 @@ Most routes require an authenticated session cookie: `gh_oauth_token`.
   - `markdown` (optional): custom initial content.
   - `message` (optional): custom commit message.
 
+#### `PATCH /api/github/repositories/posts/content`
+- Description: Renames a markdown file in `_posts` and commits the rename.
+- Query params: none.
+- Body (JSON):
+  - `repo` (required): `owner/name`.
+  - `branch` (required): branch name.
+  - `path` (required): current markdown path under `_posts`.
+  - `nextName` (required): new markdown filename (with or without `.md`).
+  - `message` (optional): custom commit message for the rename creation step.
+
 ### Blogex Config
 
 #### `GET /api/github/repositories/config`

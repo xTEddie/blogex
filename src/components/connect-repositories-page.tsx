@@ -9,6 +9,7 @@ import ExplorerStep from "@/components/workspace/explorer-step";
 import RepositoryStep from "@/components/workspace/repository-step";
 import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
+import { normalizeMarkdownFileName } from "@/lib/markdown-post";
 import {
   createMarkdownFile,
   fetchMarkdownContent,
@@ -17,6 +18,7 @@ import {
   fetchRepositoryConfig,
   fetchRepositoryPosts,
   fetchTargetFileSyncStatus,
+  renameMarkdownFile,
   saveMarkdownContent,
   type Branch,
   type PostFile,
@@ -72,11 +74,14 @@ export default function ConnectRepositoriesPage() {
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const [isCreatingMarkdown, setIsCreatingMarkdown] = useState(false);
+  const [isRenamingMarkdown, setIsRenamingMarkdown] = useState(false);
+  const [isRenameEditorOpen, setIsRenameEditorOpen] = useState(false);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
   const [postSearchQuery, setPostSearchQuery] = useState("");
   const [newMarkdownTitle, setNewMarkdownTitle] = useState("");
+  const [renameFileName, setRenameFileName] = useState("");
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [resumeState, setResumeState] = useState<PersistedConnectState | null>(
     null,
@@ -248,9 +253,11 @@ export default function ConnectRepositoriesPage() {
       setSelectedBranch("");
       setSelectedPostPath("");
       setSelectedPostName("");
+      setRenameFileName("");
       setMarkdownContent("");
       setEditorContent("");
       setEditorView("edit");
+      setIsRenameEditorOpen(false);
 
       if (!restoredState?.selectedRepo) {
         return;
@@ -363,6 +370,8 @@ export default function ConnectRepositoriesPage() {
       setPostFiles(fetchedFiles);
       setSelectedPostPath(fetchedFiles.length > 0 ? fetchedFiles[0].path : "");
       setSelectedPostName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
+      setRenameFileName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
+      setIsRenameEditorOpen(false);
       return fetchedFiles;
     } catch {
       setPostFiles([]);
@@ -395,11 +404,15 @@ export default function ConnectRepositoriesPage() {
       setEditorContent(data.markdown ?? "");
       setSelectedPostPath(data.path ?? filePath);
       setSelectedPostName(data.name ?? filePath.split("/").pop() ?? filePath);
+      setRenameFileName(data.name ?? filePath.split("/").pop() ?? filePath);
       setEditorView("edit");
+      setIsRenameEditorOpen(false);
     } catch {
       setMessage("Request failed while loading markdown content.");
       setMarkdownContent("");
       setEditorContent("");
+      setRenameFileName("");
+      setIsRenameEditorOpen(false);
     } finally {
       setIsLoadingMarkdown(false);
     }
@@ -721,6 +734,60 @@ export default function ConnectRepositoriesPage() {
     }
   }
 
+  async function handleRenameMarkdown() {
+    if (!selectedRepo || !selectedBranch || !selectedPostPath) {
+      setMessage("Select a markdown file before renaming.");
+      return;
+    }
+
+    const nextName = renameFileName.trim();
+    if (!nextName) {
+      setMessage("Enter a filename first.");
+      return;
+    }
+
+    const normalizedCurrent = normalizeMarkdownFileName(selectedPostName);
+    const normalizedNext = normalizeMarkdownFileName(nextName);
+
+    if (normalizedCurrent && normalizedNext && normalizedCurrent === normalizedNext) {
+      setIsRenameEditorOpen(false);
+      return;
+    }
+
+    setIsRenamingMarkdown(true);
+    setMessage(null);
+
+    try {
+      const result = await renameMarkdownFile({
+        repo: selectedRepo,
+        branch: selectedBranch,
+        path: selectedPostPath,
+        nextName,
+      });
+
+      if (!result.ok) {
+        setMessage(result.error);
+        return;
+      }
+
+      const data = result.data;
+      const refreshedFiles = await loadPostFiles(selectedRepo, selectedBranch);
+      if (refreshedFiles && data.path) {
+        const renamed = refreshedFiles.find((file) => file.path === data.path);
+        if (renamed) {
+          await handleOpenFile(renamed);
+        }
+      }
+
+      setMessage(data.message ?? "Markdown file renamed.");
+      setIsRenameEditorOpen(false);
+    } catch {
+      setMessage("Request failed while renaming markdown file.");
+    } finally {
+      setIsRenamingMarkdown(false);
+    }
+  }
+
   useEffect(() => {
     if (step !== "explorer" || !selectedRepo || !selectedBranch) {
       return;
@@ -841,6 +908,23 @@ export default function ConnectRepositoriesPage() {
             selectedPostPath={selectedPostPath}
             onOpenFile={(file) => void handleOpenFile(file)}
             selectedPostName={selectedPostName}
+            renameFileName={renameFileName}
+            onRenameFileNameChange={setRenameFileName}
+            isRenameEditorOpen={isRenameEditorOpen}
+            onOpenRenameEditor={() => setIsRenameEditorOpen(true)}
+            onCloseRenameEditor={() => {
+              setIsRenameEditorOpen(false);
+              setRenameFileName(selectedPostName);
+            }}
+            onRenameMarkdown={() => void handleRenameMarkdown()}
+            isRenameSaveDisabled={
+              !selectedPostPath ||
+              isRenamingMarkdown ||
+              !renameFileName.trim() ||
+              normalizeMarkdownFileName(renameFileName) ===
+                normalizeMarkdownFileName(selectedPostName)
+            }
+            isRenamingMarkdown={isRenamingMarkdown}
             targetStatus={targetStatus}
             editorView={editorView}
             onEditorViewChange={setEditorView}

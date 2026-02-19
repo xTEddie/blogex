@@ -1,6 +1,7 @@
-export function titleToMarkdownFileName(title: string) {
-  const slug = title
+export function normalizeMarkdownFileName(input: string) {
+  const slug = input
     .trim()
+    .replace(/\.md$/i, "")
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
@@ -12,6 +13,10 @@ export function titleToMarkdownFileName(title: string) {
   }
 
   return `${slug}.md`;
+}
+
+export function titleToMarkdownFileName(title: string) {
+  return normalizeMarkdownFileName(title);
 }
 
 export function buildInitialMarkdownFromTitle(title: string) {

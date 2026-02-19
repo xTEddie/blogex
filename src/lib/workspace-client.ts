@@ -68,6 +68,14 @@ export type CreateMarkdownResponse = {
   error?: string;
 };
 
+export type RenameMarkdownResponse = {
+  success?: boolean;
+  path?: string;
+  name?: string;
+  message?: string;
+  error?: string;
+};
+
 export type GetConfigResponse = {
   exists?: boolean;
   config?: Partial<BlogexConfig> | null;
@@ -240,6 +248,36 @@ export async function createMarkdownFile(payload: {
   };
 }
 
+/** Rename a markdown file in _posts and commit the change. */
+export async function renameMarkdownFile(payload: {
+  repo: string;
+  branch: string;
+  path: string;
+  nextName: string;
+  message?: string;
+}) {
+  const response = await fetch("/api/github/repositories/posts/content", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await response.json()) as RenameMarkdownResponse;
+  if (!response.ok) {
+    return {
+      ok: false as const,
+      error: data.error ?? "Failed to rename markdown file.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    data,
+  };
+}
+
 /** Load blogex.config.json for a repository and branch. */
 export async function fetchRepositoryConfig(repo: string, branch: string) {
   const response = await fetch(
@@ -367,4 +405,3 @@ export async function fetchTargetFileSyncStatus(payload: {
     data,
   };
 }
-
