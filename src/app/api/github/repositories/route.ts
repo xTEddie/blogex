@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       process.cwd(),
       "src",
       "templates",
-      "lorem-ipsum.md",
+      "hello-world.md",
     );
     defaultPostContent = await readFile(templatePath, "utf8");
   } catch {
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
 
   if (owner && repositoryName) {
     const createPostsDirectoryResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repositoryName}/contents/_posts/lorem-ipsum.md`,
+      `https://api.github.com/repos/${owner}/${repositoryName}/contents/_posts/hello-world.md`,
       {
         method: "PUT",
         headers: {
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
           "User-Agent": "blogex",
         },
         body: JSON.stringify({
-          message: "chore: add default lorem ipsum post",
+          message: "chore: add default hello world post",
           content: Buffer.from(defaultPostContent).toString("base64"),
         }),
         cache: "no-store",
