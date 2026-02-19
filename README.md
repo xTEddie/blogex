@@ -1,6 +1,36 @@
 # blogex
 GitHub-native CMS for Markdown blogs.
 
+## Features
+
+- GitHub OAuth login (GitHub-only) with secure cookie-based session.
+- Logged-in user home with repository creation flow.
+- Create blog repositories with automatic bootstrap:
+  - `blogex.config.json` at repository root.
+  - default `_posts/hello-world.md` content.
+- Workspace wizard for selecting repository and branch.
+- Repository list caching on client with manual refresh action.
+- Markdown file explorer for `_posts` with search.
+- Markdown editor with:
+  - edit/preview toggle,
+  - frontmatter-aware preview,
+  - save-to-commit workflow.
+- Create new markdown files from title (slug filename + default frontmatter).
+- Rename markdown files in `_posts` with commit support.
+- Line-ending safety:
+  - preserves CRLF/LF style when editing existing files,
+  - sync pull keeps source file bytes as-is.
+- Workspace settings page for managing per-repo `blogex.config.json`.
+- Sync tools:
+  - list source markdown files,
+  - pull selected markdown into current repo,
+  - file-exists status indicator,
+  - source vs target compare with unified diff panel.
+- UI improvements for usability:
+  - mobile-friendly layouts for key workspace flows,
+  - reusable icon components,
+  - thin consistent custom scrollbars.
+
 ## API
 
 All routes are Next.js Route Handlers under `src/app/api` unless noted.
