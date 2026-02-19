@@ -37,6 +37,35 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
   return parsed;
 }
 
+function extractTotalPages(linkHeader: string, currentPage: number, hasNext: boolean) {
+  const segments = linkHeader.split(",");
+
+  for (const segment of segments) {
+    if (!segment.includes('rel="last"')) {
+      continue;
+    }
+
+    const match = segment.match(/<([^>]+)>/);
+
+    if (!match) {
+      continue;
+    }
+
+    const url = new URL(match[1]);
+    const lastPage = Number.parseInt(url.searchParams.get("page") ?? "", 10);
+
+    if (Number.isFinite(lastPage) && lastPage > 0) {
+      return lastPage;
+    }
+  }
+
+  if (!hasNext) {
+    return currentPage;
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
@@ -75,6 +104,7 @@ export async function GET(request: NextRequest) {
   const linkHeader = githubResponse.headers.get("link") ?? "";
   const hasNext = linkHeader.includes('rel="next"');
   const hasPrev = page > 1;
+  const totalPages = extractTotalPages(linkHeader, page, hasNext);
 
   return NextResponse.json(
     {
@@ -88,6 +118,7 @@ export async function GET(request: NextRequest) {
       perPage,
       hasNext,
       hasPrev,
+      totalPages,
     },
     { status: 200 },
   );

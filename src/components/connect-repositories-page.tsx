@@ -16,6 +16,7 @@ type RepositoriesResponse = {
   perPage?: number;
   hasNext?: boolean;
   hasPrev?: boolean;
+  totalPages?: number | null;
   error?: string;
 };
 
@@ -25,6 +26,7 @@ export default function ConnectRepositoriesPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
 
@@ -49,6 +51,7 @@ export default function ConnectRepositoriesPage() {
 
       setRepositories(fetchedRepositories);
       setPage(resolvedPage);
+      setTotalPages(data.totalPages ?? null);
       setHasNext(Boolean(data.hasNext));
       setHasPrev(Boolean(data.hasPrev));
       setSelectedRepo(
@@ -152,7 +155,10 @@ export default function ConnectRepositoriesPage() {
           </button>
         </div>
 
-        <p className="mt-3 text-xs text-zinc-400">Page {page}</p>
+        <p className="mt-3 text-xs text-zinc-400">
+          Page {page}
+          {totalPages ? ` of ${totalPages}` : ""}
+        </p>
 
         <button
           type="button"
