@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import {
+  getRepositoryInitTemplatePath,
+  REPOSITORY_INIT_COMMIT_MESSAGE,
+  REPOSITORY_INIT_TARGET_FILE_PATH,
+} from "@/lib/repository-init-config";
 
 type CreateRepositoryPayload = {
   name?: string;
@@ -156,12 +160,7 @@ export async function POST(request: NextRequest) {
 
   let defaultPostContent: string;
   try {
-    const templatePath = path.join(
-      process.cwd(),
-      "src",
-      "templates",
-      "hello-world.md",
-    );
+    const templatePath = getRepositoryInitTemplatePath();
     defaultPostContent = await readFile(templatePath, "utf8");
   } catch {
     return NextResponse.json(
@@ -208,7 +207,7 @@ export async function POST(request: NextRequest) {
 
   if (owner && repositoryName) {
     const createPostsDirectoryResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repositoryName}/contents/_posts/hello-world.md`,
+      `https://api.github.com/repos/${owner}/${repositoryName}/contents/${REPOSITORY_INIT_TARGET_FILE_PATH}`,
       {
         method: "PUT",
         headers: {
@@ -219,7 +218,7 @@ export async function POST(request: NextRequest) {
           "User-Agent": "blogex",
         },
         body: JSON.stringify({
-          message: "chore: add default hello world post",
+          message: REPOSITORY_INIT_COMMIT_MESSAGE,
           content: Buffer.from(defaultPostContent).toString("base64"),
         }),
         cache: "no-store",
