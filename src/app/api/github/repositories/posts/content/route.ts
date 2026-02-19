@@ -482,6 +482,14 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const nextFileName = nextPath.split("/").pop();
+  if (!nextFileName) {
+    return NextResponse.json(
+      { error: "Invalid target markdown filename." },
+      { status: 400 },
+    );
+  }
+
   if (nextPath === filePath) {
     return NextResponse.json(
       {
@@ -590,7 +598,7 @@ export async function PATCH(request: NextRequest) {
       },
       body: JSON.stringify({
         message:
-          payload.message?.trim() || createRenameMarkdownCommitMessage(normalizedFileName),
+          payload.message?.trim() || createRenameMarkdownCommitMessage(nextFileName),
         content: currentFile.content.replace(/\n/g, ""),
         branch,
       }),
@@ -650,7 +658,7 @@ export async function PATCH(request: NextRequest) {
     {
       success: true,
       path: nextPath,
-      name: normalizedFileName,
+      name: nextFileName,
       message: "Markdown file renamed and committed.",
     },
     { status: 200 },
