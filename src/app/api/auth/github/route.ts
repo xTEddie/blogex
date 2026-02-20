@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-errors";
 import { setOAuthStateCookie } from "@/lib/auth-cookies";
-
-const CALLBACK_PATH = "/auth/github/callback";
+import {
+  GITHUB_OAUTH_CALLBACK_PATH,
+  GITHUB_OAUTH_SCOPE,
+} from "@/lib/oauth-config";
 
 function getAppUrl(request: NextRequest): string {
   return request.nextUrl.origin;
@@ -16,13 +18,13 @@ export async function GET(request: NextRequest) {
   }
 
   const appUrl = getAppUrl(request);
-  const redirectUri = `${appUrl}${CALLBACK_PATH}`;
+  const redirectUri = `${appUrl}${GITHUB_OAUTH_CALLBACK_PATH}`;
   const state = crypto.randomUUID();
 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: "read:user user:email repo",
+    scope: GITHUB_OAUTH_SCOPE,
     state,
     allow_signup: "true",
   });

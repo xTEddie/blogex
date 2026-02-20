@@ -5,7 +5,7 @@ import {
   clearOAuthStateCookie,
   setOAuthTokenCookie,
 } from "@/lib/auth-cookies";
-const CALLBACK_PATH = "/auth/github/callback";
+import { GITHUB_OAUTH_CALLBACK_PATH } from "@/lib/oauth-config";
 
 type GithubTokenResponse = {
   access_token?: string;
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   }
 
   const appUrl = getAppUrl(request);
-  const redirectUri = `${appUrl}${CALLBACK_PATH}`;
+  const redirectUri = `${appUrl}${GITHUB_OAUTH_CALLBACK_PATH}`;
   const tokenParams = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
