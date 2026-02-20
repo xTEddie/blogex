@@ -1,12 +1,39 @@
 # blogex
 GitHub-native CMS for Markdown blogs.
 
+## Features
+
+- GitHub-only OAuth sign-in with secure cookie session.
+- User home with repository creation flow.
+- Repository bootstrap on create:
+  - root `blogex.config.json`
+  - default `_posts/hello-world.md`
+- Workspace wizard to select repository and branch.
+- Client-side repository caching with manual refresh.
+- Markdown explorer for `_posts` with search.
+- Markdown editor with:
+  - edit and preview modes
+  - frontmatter-aware preview
+  - save-to-commit workflow
+- Create markdown files from title (slug + default frontmatter).
+- Rename markdown files in `_posts` with commit support.
+- Line-ending preservation:
+  - keeps CRLF/LF style when editing existing files
+  - sync pull preserves source file bytes
+- Workspace settings page to manage per-repo `blogex.config.json`.
+- Sync tooling:
+  - list source markdown files
+  - pull one file into current repo
+  - target file existence indicator
+  - source vs target unified diff compare
+- Mobile-friendly workspace UI with reusable icons and consistent custom scrollbars.
+
 ## Prerequisites
 
 - Node.js `v20.19.6` (recommended)
 - npm `v10+`
-- A GitHub OAuth App with:
-  - callback URL set to `http://localhost:3000/auth/github/callback` for local development
+- A GitHub OAuth App with callback URL set to:
+  - `http://localhost:3000/auth/github/callback` (local development)
 
 ## Setup
 
@@ -32,10 +59,10 @@ APP_URL=http://localhost:3000
 
 ## NPM Commands
 
-- `npm run dev`: start development server.
-- `npm run build`: create production build.
-- `npm run start`: run production server from build output.
-- `npm run lint`: run ESLint checks.
+- `npm run dev`: Start the development server.
+- `npm run build`: Build for production.
+- `npm run start`: Run the production server.
+- `npm run lint`: Run ESLint.
 
 ## Run The App
 
@@ -49,57 +76,28 @@ npm run dev
 
 ## blogex.config.json
 
-Each blogex repository has its own `blogex.config.json` at repo root. This config is per-repo and stores workspace settings like `owner`, `targetRepo`, `targetBranch`, and `targetDirectory`.
+Each blogex repository has its own `blogex.config.json` at the repository root.
+This file stores per-repo workspace settings such as `owner`, `targetRepo`, `targetBranch`, and `targetDirectory`.
 
-`targetRepo`, `targetBranch`, and `targetDirectory` can be configured from the Workspace Settings page (`/workspace/settings`) and are saved back to `blogex.config.json`.
+`targetRepo`, `targetBranch`, and `targetDirectory` are configurable in Workspace Settings (`/workspace/settings`) and are saved back to `blogex.config.json`.
 
 Template (with comments):
 
 ```jsonc
 {
-  // GitHub username/org that owns this blogex repository.
+  // GitHub username or org that owns this blogex repository.
   "owner": "xTEddie",
 
-  // Source/content repository to sync from (format: owner/repo).
+  // Source/content repository in owner/repo format.
   "targetRepo": "xTEddie/Blog",
 
-  // Branch in targetRepo used for sync/compare.
+  // Branch in targetRepo used for sync and compare.
   "targetBranch": "main",
 
   // Directory in targetRepo that contains markdown posts.
   "targetDirectory": "_posts"
 }
 ```
-
-## Features
-
-- GitHub OAuth login (GitHub-only) with secure cookie-based session.
-- Logged-in user home with repository creation flow.
-- Create blog repositories with automatic bootstrap:
-  - `blogex.config.json` at repository root.
-  - default `_posts/hello-world.md` content.
-- Workspace wizard for selecting repository and branch.
-- Repository list caching on client with manual refresh action.
-- Markdown file explorer for `_posts` with search.
-- Markdown editor with:
-  - edit/preview toggle,
-  - frontmatter-aware preview,
-  - save-to-commit workflow.
-- Create new markdown files from title (slug filename + default frontmatter).
-- Rename markdown files in `_posts` with commit support.
-- Line-ending safety:
-  - preserves CRLF/LF style when editing existing files,
-  - sync pull keeps source file bytes as-is.
-- Workspace settings page for managing per-repo `blogex.config.json`.
-- Sync tools:
-  - list source markdown files,
-  - pull selected markdown into current repo,
-  - file-exists status indicator,
-  - source vs target compare with unified diff panel.
-- UI improvements for usability:
-  - mobile-friendly layouts for key workspace flows,
-  - reusable icon components,
-  - thin consistent custom scrollbars.
 
 ## API
 
