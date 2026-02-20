@@ -1,3 +1,5 @@
+import { STRINGS } from "@/lib/strings";
+
 type ResumeWorkspaceSessionBannerProps = {
   isResuming: boolean;
   onResume: () => void;
@@ -12,7 +14,7 @@ export default function ResumeWorkspaceSessionBanner({
   return (
     <div className="mt-4 rounded-xl border border-white/15 bg-white/10 p-4">
       <p className="text-sm text-zinc-100">
-        Existing workspace session found. Do you want to resume?
+        {STRINGS.workspace.resumeBanner.message}
       </p>
       <div className="mt-3 flex gap-2">
         <button
@@ -21,7 +23,7 @@ export default function ResumeWorkspaceSessionBanner({
           disabled={isResuming}
           className="rounded-lg border border-white/15 bg-white/95 px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isResuming ? "Resuming..." : "Resume"}
+          {isResuming ? STRINGS.workspace.resumeBanner.resuming : STRINGS.workspace.resumeBanner.resume}
         </button>
         <button
           type="button"
@@ -29,7 +31,7 @@ export default function ResumeWorkspaceSessionBanner({
           disabled={isResuming}
           className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Start fresh
+          {STRINGS.workspace.resumeBanner.startFresh}
         </button>
       </div>
     </div>

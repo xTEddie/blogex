@@ -8,6 +8,7 @@ import RepositoryStep from "@/components/workspace/repository-step";
 import ResumeWorkspaceSessionBanner from "@/components/workspace/resume-workspace-session-banner";
 import { useWorkspaceFlow } from "@/hooks/use-workspace-flow";
 import { APP_PATHS } from "@/lib/app-paths";
+import { STRINGS } from "@/lib/strings";
 
 export default function ConnectRepositoriesPage() {
   const workspace = useWorkspaceFlow();
@@ -18,31 +19,31 @@ export default function ConnectRepositoriesPage() {
       <section className="mx-auto w-full max-w-5xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            Workspace
+            {STRINGS.workspace.title}
           </h1>
           <div className="flex items-center gap-2">
             <Link
               href={APP_PATHS.WORKSPACE_SETTINGS}
               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
-              Settings
+              {STRINGS.workspace.settings}
             </Link>
             <Link
               href={APP_PATHS.USER}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               <HomeIcon className="h-3.5 w-3.5 fill-current" />
-              Home
+              {STRINGS.workspace.home}
             </Link>
           </div>
         </div>
 
         <p className="mt-2 text-sm text-zinc-300">
           {state.step === "repository"
-            ? "Select a repository."
+            ? STRINGS.workspace.subtitleByStep.repository
             : state.step === "branch"
-              ? "Select a branch."
-              : "Browse markdown files in _posts."}
+              ? STRINGS.workspace.subtitleByStep.branch
+              : STRINGS.workspace.subtitleByStep.explorer}
         </p>
 
         {state.resumeState ? (
@@ -63,7 +64,6 @@ export default function ConnectRepositoriesPage() {
             selectedRepo={state.selectedRepo}
             onSelectRepo={actions.setSelectedRepo}
             loadedRepositoryCount={state.repositories.length}
-            totalPages={state.totalPages}
             onNext={() => void actions.nextToBranches()}
             isLoadingBranches={state.isLoadingBranches}
           />

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { createRepository } from "@/lib/repositories-client";
+import { STRINGS } from "@/lib/strings";
 
 export default function CreateRepositoryForm() {
   const [showForm, setShowForm] = useState(false);
@@ -24,16 +25,16 @@ export default function CreateRepositoryForm() {
       });
 
       if (data.error) {
-        setMessage(data.error ?? "Failed to create repository.");
+        setMessage(data.error ?? STRINGS.createRepository.messages.failedToCreateRepository);
         return;
       }
 
-      setMessage("Repository created successfully.");
+      setMessage(STRINGS.createRepository.messages.repositoryCreatedSuccessfully);
       setCreatedUrl(data.url ?? null);
       setName("");
       setVisibility("public");
     } catch {
-      setMessage("Request failed. Please try again.");
+      setMessage(STRINGS.createRepository.messages.requestFailedTryAgain);
     } finally {
       setIsSubmitting(false);
     }
@@ -46,7 +47,7 @@ export default function CreateRepositoryForm() {
         onClick={() => setShowForm((current) => !current)}
         className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/15"
       >
-        {showForm ? "Hide repository form" : "Create repository"}
+        {showForm ? STRINGS.createRepository.toggleHide : STRINGS.createRepository.toggleShow}
       </button>
 
       {showForm ? (
@@ -56,7 +57,7 @@ export default function CreateRepositoryForm() {
               htmlFor="repo-name"
               className="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-300"
             >
-              Repository name
+              {STRINGS.createRepository.repositoryNameLabel}
             </label>
             <input
               id="repo-name"
@@ -65,13 +66,13 @@ export default function CreateRepositoryForm() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               className="w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
-              placeholder="my-new-repo"
+              placeholder={STRINGS.createRepository.repositoryNamePlaceholder}
             />
           </div>
 
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-              Visibility
+              {STRINGS.createRepository.visibilityLabel}
             </p>
             <div className="flex gap-3">
               <label className="flex items-center gap-2 text-sm text-zinc-100">
@@ -82,7 +83,7 @@ export default function CreateRepositoryForm() {
                   checked={visibility === "public"}
                   onChange={() => setVisibility("public")}
                 />
-                Public
+                {STRINGS.createRepository.visibilityPublic}
               </label>
               <label className="flex items-center gap-2 text-sm text-zinc-100">
                 <input
@@ -92,7 +93,7 @@ export default function CreateRepositoryForm() {
                   checked={visibility === "private"}
                   onChange={() => setVisibility("private")}
                 />
-                Private
+                {STRINGS.createRepository.visibilityPrivate}
               </label>
             </div>
           </div>
@@ -102,7 +103,9 @@ export default function CreateRepositoryForm() {
             disabled={isSubmitting}
             className="w-full rounded-xl border border-white/15 bg-white/95 px-4 py-3 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isSubmitting ? "Creating..." : "Create repository"}
+            {isSubmitting
+              ? STRINGS.createRepository.creating
+              : STRINGS.createRepository.createRepository}
           </button>
 
           {message ? (
@@ -115,7 +118,7 @@ export default function CreateRepositoryForm() {
                   rel="noopener noreferrer"
                   className="underline"
                 >
-                  Open repository
+                  {STRINGS.createRepository.openRepository}
                 </a>
               ) : null}
             </p>

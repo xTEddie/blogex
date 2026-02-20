@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { HomeIcon } from "@/components/icons";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/cache-config";
 import { APP_PATHS } from "@/lib/app-paths";
+import { STRINGS } from "@/lib/strings";
 import {
   fetchRepositoryConfig,
   fetchSyncMarkdownFiles,
@@ -43,7 +44,7 @@ export default function WorkspaceSettingsPage() {
 
   async function loadConfig(nextRepo: string, nextBranch: string) {
     if (!nextRepo || !nextBranch) {
-      setMessage("Set repository and branch first.");
+      setMessage(STRINGS.workspaceSettings.messages.setRepoAndBranchFirst);
       return;
     }
 
@@ -62,7 +63,7 @@ export default function WorkspaceSettingsPage() {
 
       if (!data.exists || !data.config) {
         setConfig(DEFAULT_CONFIG);
-        setMessage("No blogex.config.json found yet. Save to create it.");
+        setMessage(STRINGS.workspaceSettings.messages.noConfigFound);
         return;
       }
 
@@ -72,9 +73,9 @@ export default function WorkspaceSettingsPage() {
         targetBranch: data.config.targetBranch ?? "",
         targetDirectory: data.config.targetDirectory ?? "",
       });
-      setMessage("Configuration loaded.");
+      setMessage(STRINGS.workspaceSettings.messages.configurationLoaded);
     } catch {
-      setMessage("Request failed while loading config.");
+      setMessage(STRINGS.workspaceSettings.messages.loadConfigFailed);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +104,7 @@ export default function WorkspaceSettingsPage() {
       setBranch(parsed.selectedBranch);
       void loadConfig(parsed.selectedRepo, parsed.selectedBranch);
     } catch {
-      setMessage("Could not restore workspace session.");
+      setMessage(STRINGS.workspaceSettings.messages.restoreSessionFailed);
     }
   }, []);
 
@@ -116,7 +117,7 @@ export default function WorkspaceSettingsPage() {
     const trimmedBranch = branch.trim();
 
     if (!trimmedRepo || !trimmedBranch) {
-      setMessage("Repository and branch are required.");
+      setMessage(STRINGS.workspaceSettings.messages.repoAndBranchRequired);
       return;
     }
 
@@ -135,9 +136,9 @@ export default function WorkspaceSettingsPage() {
         return;
       }
 
-      setMessage("blogex.config.json saved.");
+      setMessage(STRINGS.workspaceSettings.messages.configSaved);
     } catch {
-      setMessage("Request failed while saving config.");
+      setMessage(STRINGS.workspaceSettings.messages.saveConfigFailed);
     } finally {
       setIsSaving(false);
     }
@@ -149,7 +150,7 @@ export default function WorkspaceSettingsPage() {
     const sourceDirectory = config.targetDirectory.trim() || "_posts";
 
     if (!sourceRepo || !sourceBranch) {
-      setSyncMessage("Set Target Repo and Target Branch first.");
+      setSyncMessage(STRINGS.workspaceSettings.messages.setTargetRepoAndBranchFirst);
       return;
     }
 
@@ -174,11 +175,13 @@ export default function WorkspaceSettingsPage() {
       const files = result.files;
       setSyncFiles(files);
       setSelectedSyncPath(files[0]?.path ?? "");
-      setSyncMessage(files.length === 0 ? "No markdown files found." : null);
+      setSyncMessage(
+        files.length === 0 ? STRINGS.workspaceSettings.messages.noMarkdownFilesFound : null,
+      );
     } catch {
       setSyncFiles([]);
       setSelectedSyncPath("");
-      setSyncMessage("Request failed while loading sync markdown files.");
+      setSyncMessage(STRINGS.workspaceSettings.messages.loadSyncFilesFailed);
     } finally {
       setIsLoadingSyncFiles(false);
     }
@@ -192,12 +195,12 @@ export default function WorkspaceSettingsPage() {
     const targetBranch = branch.trim();
 
     if (!selectedSyncPath) {
-      setSyncMessage("Select one markdown file to sync.");
+      setSyncMessage(STRINGS.workspaceSettings.messages.selectOneMarkdownToSync);
       return;
     }
 
     if (!sourceRepo || !sourceBranch || !targetRepo || !targetBranch) {
-      setSyncMessage("Source and target repo/branch values are required.");
+      setSyncMessage(STRINGS.workspaceSettings.messages.sourceAndTargetRequired);
       return;
     }
 
@@ -219,9 +222,9 @@ export default function WorkspaceSettingsPage() {
         return;
       }
 
-      setSyncMessage(result.data.message ?? "Markdown synced successfully.");
+      setSyncMessage(result.data.message ?? STRINGS.workspaceSettings.messages.markdownSynced);
     } catch {
-      setSyncMessage("Request failed while syncing markdown.");
+      setSyncMessage(STRINGS.workspaceSettings.messages.syncMarkdownFailed);
     } finally {
       setIsSyncingFile(false);
     }
@@ -232,48 +235,50 @@ export default function WorkspaceSettingsPage() {
       <section className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30 sm:p-8">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            Workspace Settings
+            {STRINGS.workspaceSettings.title}
           </h1>
           <div className="flex items-center gap-2">
             <Link
               href={APP_PATHS.WORKSPACE}
               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
-              Workspace
+              {STRINGS.workspaceSettings.workspace}
             </Link>
             <Link
               href={APP_PATHS.USER}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               <HomeIcon className="h-3.5 w-3.5 fill-current" />
-              Home
+              {STRINGS.workspaceSettings.home}
             </Link>
           </div>
         </div>
 
         <p className="mt-2 text-sm text-zinc-300">
-          Manage <code>blogex.config.json</code> for the selected repository and branch.
+          {STRINGS.workspaceSettings.subtitlePrefix}
+          <code>blogex.config.json</code>
+          {STRINGS.workspaceSettings.subtitleSuffix}
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <label className="text-sm text-zinc-200">
-            Repository (owner/name)
+            {STRINGS.workspaceSettings.labels.repository}
             <input
               type="text"
               value={repo}
               onChange={(event) => setRepo(event.target.value)}
-              placeholder="owner/repository"
+              placeholder={STRINGS.workspaceSettings.placeholders.repository}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
 
           <label className="text-sm text-zinc-200">
-            Branch
+            {STRINGS.workspaceSettings.labels.branch}
             <input
               type="text"
               value={branch}
               onChange={(event) => setBranch(event.target.value)}
-              placeholder="main"
+              placeholder={STRINGS.workspaceSettings.placeholders.branch}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
@@ -286,7 +291,9 @@ export default function WorkspaceSettingsPage() {
             disabled={isLoading}
             className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? "Loading..." : "Load config"}
+            {isLoading
+              ? STRINGS.workspaceSettings.actions.loading
+              : STRINGS.workspaceSettings.actions.loadConfig}
           </button>
           <button
             type="button"
@@ -294,59 +301,61 @@ export default function WorkspaceSettingsPage() {
             disabled={isSaving}
             className="rounded-xl border border-white/15 bg-white/95 px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSaving ? "Saving..." : "Save config"}
+            {isSaving
+              ? STRINGS.workspaceSettings.actions.saving
+              : STRINGS.workspaceSettings.actions.saveConfig}
           </button>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <label className="text-sm text-zinc-200">
-            Owner
+            {STRINGS.workspaceSettings.labels.owner}
             <input
               type="text"
               value={config.owner}
               onChange={(event) =>
                 setConfig((prev) => ({ ...prev, owner: event.target.value }))
               }
-              placeholder="xTEddie"
+              placeholder={STRINGS.workspaceSettings.placeholders.owner}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
 
           <label className="text-sm text-zinc-200">
-            Target Repo
+            {STRINGS.workspaceSettings.labels.targetRepo}
             <input
               type="text"
               value={config.targetRepo}
               onChange={(event) =>
                 setConfig((prev) => ({ ...prev, targetRepo: event.target.value }))
               }
-              placeholder="owner/target-repository"
+              placeholder={STRINGS.workspaceSettings.placeholders.targetRepo}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
 
           <label className="text-sm text-zinc-200">
-            Target Branch
+            {STRINGS.workspaceSettings.labels.targetBranch}
             <input
               type="text"
               value={config.targetBranch}
               onChange={(event) =>
                 setConfig((prev) => ({ ...prev, targetBranch: event.target.value }))
               }
-              placeholder="main"
+              placeholder={STRINGS.workspaceSettings.placeholders.targetBranch}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
 
           <label className="text-sm text-zinc-200">
-            Target Directory
+            {STRINGS.workspaceSettings.labels.targetDirectory}
             <input
               type="text"
               value={config.targetDirectory}
               onChange={(event) =>
                 setConfig((prev) => ({ ...prev, targetDirectory: event.target.value }))
               }
-              placeholder="_posts"
+              placeholder={STRINGS.workspaceSettings.placeholders.targetDirectory}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
@@ -359,10 +368,11 @@ export default function WorkspaceSettingsPage() {
         ) : null}
 
         <div className="mt-8 rounded-xl border border-white/15 bg-zinc-900/50 p-4 sm:p-5">
-          <h2 className="text-base font-semibold text-white">Sync markdowns</h2>
+          <h2 className="text-base font-semibold text-white">
+            {STRINGS.workspaceSettings.actions.syncMarkdowns}
+          </h2>
           <p className="mt-1 text-sm text-zinc-300">
-            Pull one markdown file from configured target repo into this repo&apos;s
-            <code> _posts</code> directory.
+            {STRINGS.workspaceSettings.sync.description}
           </p>
 
           <div className="mt-4">
@@ -372,20 +382,26 @@ export default function WorkspaceSettingsPage() {
               disabled={isLoadingSyncFiles}
               className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isLoadingSyncFiles ? "Loading markdowns..." : "Load markdowns to sync"}
+              {isLoadingSyncFiles
+                ? STRINGS.workspaceSettings.actions.loadingMarkdowns
+                : STRINGS.workspaceSettings.actions.loadMarkdownsToSync}
             </button>
           </div>
 
           {showSyncList ? (
             <div className="mt-4">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
-                Source markdown files
+                {STRINGS.workspaceSettings.sync.sourceFilesHeading}
               </p>
               <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-white/15 bg-zinc-900/70 p-2">
                 {isLoadingSyncFiles ? (
-                  <p className="px-3 py-2 text-sm text-zinc-300">Loading...</p>
+                  <p className="px-3 py-2 text-sm text-zinc-300">
+                    {STRINGS.workspaceSettings.messages.loading}
+                  </p>
                 ) : syncFiles.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-zinc-300">No markdown files available.</p>
+                  <p className="px-3 py-2 text-sm text-zinc-300">
+                    {STRINGS.workspaceSettings.sync.noMarkdownFilesAvailable}
+                  </p>
                 ) : (
                   syncFiles.map((file) => {
                     const isSelected = selectedSyncPath === file.path;
@@ -417,7 +433,9 @@ export default function WorkspaceSettingsPage() {
                 disabled={isSyncingFile || !selectedSyncPath || syncFiles.length === 0}
                 className="mt-4 rounded-xl border border-white/15 bg-white/95 px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSyncingFile ? "Syncing..." : "Pull selected markdown"}
+                {isSyncingFile
+                  ? STRINGS.workspaceSettings.actions.syncing
+                  : STRINGS.workspaceSettings.actions.pullSelectedMarkdown}
               </button>
             </div>
           ) : null}

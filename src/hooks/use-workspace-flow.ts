@@ -11,6 +11,7 @@ import {
 } from "@/lib/cache-config";
 import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
 import { normalizeMarkdownFileName } from "@/lib/markdown-post";
+import { STRINGS } from "@/lib/strings";
 import {
   createMarkdownFile,
   fetchMarkdownSyncDiff,
@@ -428,7 +429,7 @@ export function useWorkspaceFlow() {
       if (!availableRepos.has(restoredState.selectedRepo)) {
         dispatchUI({
           type: "set_message",
-          message: "Saved session repo is no longer available.",
+          message: STRINGS.workspaceFlow.messages.savedSessionRepoUnavailable,
         });
         return;
       }
@@ -479,7 +480,7 @@ export function useWorkspaceFlow() {
       setRepositories([]);
       dispatchUI({
         type: "set_message",
-        message: "Request failed while loading repositories.",
+        message: STRINGS.workspaceFlow.messages.loadRepositoriesFailed,
       });
     } finally {
       dispatchUI({ type: "set_loading", key: "isLoadingRepositories", value: false });
@@ -506,7 +507,10 @@ export function useWorkspaceFlow() {
       return fetchedBranches;
     } catch {
       setBranches([]);
-      dispatchUI({ type: "set_message", message: "Request failed while loading branches." });
+      dispatchUI({
+        type: "set_message",
+        message: STRINGS.workspaceFlow.messages.loadBranchesFailed,
+      });
       return null;
     } finally {
       dispatchUI({ type: "set_loading", key: "isLoadingBranches", value: false });
@@ -538,7 +542,7 @@ export function useWorkspaceFlow() {
       setPostFiles([]);
       dispatchUI({
         type: "set_message",
-        message: "Request failed while loading markdown files.",
+        message: STRINGS.workspaceFlow.messages.loadMarkdownFilesFailed,
       });
       return null;
     } finally {
@@ -570,7 +574,7 @@ export function useWorkspaceFlow() {
     } catch {
       dispatchUI({
         type: "set_message",
-        message: "Request failed while loading markdown content.",
+        message: STRINGS.workspaceFlow.messages.loadMarkdownContentFailed,
       });
       setMarkdownContent("");
       setEditorContent("");
@@ -753,7 +757,10 @@ export function useWorkspaceFlow() {
 
   async function handleNextToBranches() {
     if (!selectedRepo) {
-      dispatchUI({ type: "set_message", message: "Select a repository first." });
+      dispatchUI({
+        type: "set_message",
+        message: STRINGS.workspaceFlow.messages.selectRepositoryFirst,
+      });
       return;
     }
 
@@ -790,7 +797,7 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch) {
       dispatchUI({
         type: "set_message",
-        message: "Select a repository and branch first.",
+        message: STRINGS.workspaceFlow.messages.selectRepositoryAndBranchFirst,
       });
       return;
     }
@@ -821,7 +828,7 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch) {
       dispatchUI({
         type: "set_message",
-        message: "Repository or branch is not selected.",
+        message: STRINGS.workspaceFlow.messages.repositoryOrBranchNotSelected,
       });
       return;
     }
@@ -834,7 +841,7 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
       dispatchUI({
         type: "set_message",
-        message: "Select a markdown file before saving.",
+        message: STRINGS.workspaceFlow.messages.selectMarkdownBeforeSaving,
       });
       return;
     }
@@ -859,12 +866,12 @@ export function useWorkspaceFlow() {
       setMarkdownContent(editorContent);
       dispatchUI({
         type: "set_message",
-        message: result.data.message ?? "Saved successfully.",
+        message: result.data.message ?? STRINGS.workspaceFlow.messages.saveSuccess,
       });
     } catch {
       dispatchUI({
         type: "set_message",
-        message: "Request failed while saving markdown file.",
+        message: STRINGS.workspaceFlow.messages.saveMarkdownFailed,
       });
     } finally {
       dispatchUI({ type: "set_loading", key: "isSavingMarkdown", value: false });
@@ -875,14 +882,14 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch) {
       dispatchUI({
         type: "set_message",
-        message: "Select a repository and branch first.",
+        message: STRINGS.workspaceFlow.messages.selectRepositoryAndBranchFirst,
       });
       return;
     }
 
     const inputTitle = newMarkdownTitle.trim();
     if (!inputTitle) {
-      dispatchUI({ type: "set_message", message: "Enter a title first." });
+      dispatchUI({ type: "set_message", message: STRINGS.workspaceFlow.messages.enterTitleFirst });
       return;
     }
 
@@ -914,12 +921,12 @@ export function useWorkspaceFlow() {
       setNewMarkdownTitle("");
       dispatchUI({
         type: "set_message",
-        message: data.message ?? "Markdown file created.",
+        message: data.message ?? STRINGS.workspaceFlow.messages.markdownFileCreated,
       });
     } catch {
       dispatchUI({
         type: "set_message",
-        message: "Request failed while creating markdown file.",
+        message: STRINGS.workspaceFlow.messages.createMarkdownFailed,
       });
     } finally {
       dispatchUI({ type: "set_loading", key: "isCreatingMarkdown", value: false });
@@ -930,14 +937,17 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
       dispatchUI({
         type: "set_message",
-        message: "Select a markdown file before renaming.",
+        message: STRINGS.workspaceFlow.messages.selectMarkdownBeforeRenaming,
       });
       return;
     }
 
     const nextName = renameFileName.trim();
     if (!nextName) {
-      dispatchUI({ type: "set_message", message: "Enter a filename first." });
+      dispatchUI({
+        type: "set_message",
+        message: STRINGS.workspaceFlow.messages.enterFilenameFirst,
+      });
       return;
     }
 
@@ -976,13 +986,13 @@ export function useWorkspaceFlow() {
 
       dispatchUI({
         type: "set_message",
-        message: data.message ?? "Markdown file renamed.",
+        message: data.message ?? STRINGS.workspaceFlow.messages.markdownFileRenamed,
       });
       dispatchUI({ type: "close_rename_editor" });
     } catch {
       dispatchUI({
         type: "set_message",
-        message: "Request failed while renaming markdown file.",
+        message: STRINGS.workspaceFlow.messages.renameMarkdownFailed,
       });
     } finally {
       dispatchUI({ type: "set_loading", key: "isRenamingMarkdown", value: false });
@@ -998,7 +1008,7 @@ export function useWorkspaceFlow() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
       dispatchUI({
         type: "set_message",
-        message: "Select a markdown file before comparing.",
+        message: STRINGS.workspaceFlow.messages.selectMarkdownBeforeComparing,
       });
       return;
     }
@@ -1009,8 +1019,7 @@ export function useWorkspaceFlow() {
         type: "set_compare",
         compareStatus: "error",
         compareDiff: "",
-        compareMessage:
-          "Target repository is not configured. Update workspace settings first.",
+        compareMessage: STRINGS.workspaceFlow.messages.targetNotConfigured,
       });
       return;
     }
@@ -1046,17 +1055,17 @@ export function useWorkspaceFlow() {
       if (status === "same") {
         dispatchUI({
           type: "set_compare",
-          compareMessage: "Source and target files are identical.",
+          compareMessage: STRINGS.workspaceFlow.messages.compareSame,
         });
       } else if (status === "missing_target") {
         dispatchUI({
           type: "set_compare",
-          compareMessage: "Target file does not exist yet.",
+          compareMessage: STRINGS.workspaceFlow.messages.compareMissingTarget,
         });
       } else if (status === "missing_source") {
         dispatchUI({
           type: "set_compare",
-          compareMessage: "Source file is missing.",
+          compareMessage: STRINGS.workspaceFlow.messages.compareMissingSource,
         });
       } else {
         dispatchUI({ type: "set_compare", compareMessage: null });
@@ -1073,7 +1082,7 @@ export function useWorkspaceFlow() {
         type: "set_compare",
         compareStatus: "error",
         compareDiff: "",
-        compareMessage: "Request failed while comparing markdown files.",
+        compareMessage: STRINGS.workspaceFlow.messages.compareMarkdownFailed,
       });
     } finally {
       dispatchUI({ type: "set_loading", key: "isComparingMarkdown", value: false });
