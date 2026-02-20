@@ -24,4 +24,4 @@ def hello():
     print("hello world!")
 ```
 
-Original file can be found on [GitHub](./hello-world.md)
+Original file can be found on [GitHub](https://github.com/xTEddie/blogex/blob/main/src/templates/hello-world.md)
