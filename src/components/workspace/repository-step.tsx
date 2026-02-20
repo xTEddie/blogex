@@ -81,8 +81,8 @@ export default function RepositoryStep({
         )}
       </div>
       <p className="mt-4 text-xs text-zinc-400">
-        Loaded {loadedRepositoryCount} repositories
-        {totalPages ? ` across ${totalPages} pages` : ""}.
+        {loadedRepositoryCount} {loadedRepositoryCount === 1 ? "repository" : "repositories"}{" "}
+        loaded.
       </p>
       <button
         type="button"
