@@ -12,6 +12,15 @@ GitHub-native CMS for Markdown blogs.
 - Client-side caching for repository/session UX with manual refresh.
 - Mobile-friendly UI with consistent styling and reusable components.
 
+## Tech Stack
+
+- Frontend: React 19 with Next.js 16 (App Router)
+- Backend: Next.js Route Handlers (`src/app/api`)
+- Styling: Tailwind CSS 4
+- Editor: Custom markdown editor UI with preview via `react-markdown`, `remark-gfm`, and frontmatter parsing via `gray-matter`
+- Routing: Next.js App Router (`src/app`)
+- API: Internal REST endpoints in Next.js + GitHub REST API (`api.github.com`)
+
 ## Getting Started
 
 ### Prerequisites
