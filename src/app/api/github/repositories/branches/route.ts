@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
+import { GITHUB_API_BASE_URL, getGithubHeaders } from "@/lib/github-api-config";
 
 type GithubBranch = {
   name: string;
@@ -31,14 +32,9 @@ export async function GET(request: NextRequest) {
 
   while (hasNext) {
     const githubResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${name}/branches?per_page=100&page=${page}`,
+      `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/branches?per_page=100&page=${page}`,
       {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "blogex",
-        },
+        headers: getGithubHeaders(token),
         cache: "no-store",
       },
     );

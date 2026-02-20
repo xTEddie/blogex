@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import { createSyncMarkdownCommitMessage } from "@/lib/commit-messages";
+import {
+  GITHUB_API_BASE_URL,
+  getGithubHeaders,
+} from "@/lib/github-api-config";
 
 type GithubContentItem = {
   type: "file" | "dir";
@@ -48,16 +52,6 @@ function encodeContentPath(filePath: string) {
     .join("/");
 }
 
-function getGithubHeaders(token: string, withJson = false) {
-  return {
-    Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${token}`,
-    ...(withJson ? { "Content-Type": "application/json" } : {}),
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "blogex",
-  };
-}
-
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(OAUTH_TOKEN_COOKIE)?.value;
 
@@ -80,7 +74,7 @@ export async function GET(request: NextRequest) {
   }
 
   const githubResponse = await fetch(
-    `https://api.github.com/repos/${parsedRepo.owner}/${parsedRepo.name}/contents/${encodeContentPath(sourceDirectory)}?ref=${encodeURIComponent(sourceBranch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedRepo.owner}/${parsedRepo.name}/contents/${encodeContentPath(sourceDirectory)}?ref=${encodeURIComponent(sourceBranch)}`,
     {
       headers: getGithubHeaders(token),
       cache: "no-store",
@@ -158,7 +152,7 @@ export async function POST(request: NextRequest) {
 
   const encodedSourcePath = encodeContentPath(sourcePath);
   const sourceFileResponse = await fetch(
-    `https://api.github.com/repos/${parsedSource.owner}/${parsedSource.name}/contents/${encodedSourcePath}?ref=${encodeURIComponent(sourceBranch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedSource.owner}/${parsedSource.name}/contents/${encodedSourcePath}?ref=${encodeURIComponent(sourceBranch)}`,
     {
       headers: getGithubHeaders(token),
       cache: "no-store",
@@ -194,7 +188,7 @@ export async function POST(request: NextRequest) {
   const encodedTargetPath = encodeContentPath(targetPath);
 
   const existingTargetResponse = await fetch(
-    `https://api.github.com/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodedTargetPath}?ref=${encodeURIComponent(targetBranch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodedTargetPath}?ref=${encodeURIComponent(targetBranch)}`,
     {
       headers: getGithubHeaders(token),
       cache: "no-store",
@@ -218,10 +212,10 @@ export async function POST(request: NextRequest) {
   }
 
   const putResponse = await fetch(
-    `https://api.github.com/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodedTargetPath}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodedTargetPath}`,
     {
       method: "PUT",
-      headers: getGithubHeaders(token, true),
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message:
           payload.message?.trim() ||

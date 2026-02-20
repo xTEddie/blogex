@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import { createUpdateBlogexConfigCommitMessage } from "@/lib/commit-messages";
+import {
+  GITHUB_API_BASE_URL,
+  getGithubHeaders,
+} from "@/lib/github-api-config";
 import { REPOSITORY_CONFIG_FILE_PATH } from "@/lib/repository-init-config";
 
 type GithubContentResponse = {
@@ -29,16 +33,6 @@ type UpdateConfigPayload = {
   message?: string;
 };
 
-function getGithubHeaders(token: string, withJson = false) {
-  return {
-    Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${token}`,
-    ...(withJson ? { "Content-Type": "application/json" } : {}),
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "blogex",
-  };
-}
-
 function decodeGithubContent(content: string, encoding?: string) {
   if (encoding === "base64") {
     return Buffer.from(content.replace(/\n/g, ""), "base64").toString("utf8");
@@ -49,7 +43,7 @@ function decodeGithubContent(content: string, encoding?: string) {
 
 async function fetchExistingConfig(token: string, repo: string, branch: string) {
   const response = await fetch(
-    `https://api.github.com/repos/${repo}/contents/${REPOSITORY_CONFIG_FILE_PATH}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${repo}/contents/${REPOSITORY_CONFIG_FILE_PATH}?ref=${encodeURIComponent(branch)}`,
     {
       headers: getGithubHeaders(token),
       cache: "no-store",
@@ -179,10 +173,10 @@ export async function PUT(request: NextRequest) {
   }
 
   const putResponse = await fetch(
-    `https://api.github.com/repos/${repo}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
+    `${GITHUB_API_BASE_URL}/repos/${repo}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
     {
       method: "PUT",
-      headers: getGithubHeaders(token, true),
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message: payload.message?.trim() || createUpdateBlogexConfigCommitMessage(),
         content: Buffer.from(`${JSON.stringify(payload.config, null, 2)}\n`).toString(

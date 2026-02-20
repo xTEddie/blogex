@@ -1,16 +1,13 @@
+import { GITHUB_API_BASE_URL, getGithubHeaders } from "@/lib/github-api-config";
+
 export type GithubUser = {
   name: string | null;
   login: string;
 };
 
 export async function getGithubUser(token: string): Promise<GithubUser | null> {
-  const response = await fetch("https://api.github.com/user", {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "blogex",
-    },
+  const response = await fetch(`${GITHUB_API_BASE_URL}/user`, {
+    headers: getGithubHeaders(token),
     cache: "no-store",
   });
 

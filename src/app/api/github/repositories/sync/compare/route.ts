@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
+import { GITHUB_API_BASE_URL, getGithubHeaders } from "@/lib/github-api-config";
 
 type GithubContentResponse = {
   type?: "file" | "dir";
@@ -149,14 +150,9 @@ export async function GET(request: NextRequest) {
   const targetPath = `${targetDirectory}/${sourceFileName}`;
 
   const sourceResponse = await fetch(
-    `https://api.github.com/repos/${parsedSource.owner}/${parsedSource.name}/contents/${encodeContentPath(sourcePath)}?ref=${encodeURIComponent(sourceBranch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedSource.owner}/${parsedSource.name}/contents/${encodeContentPath(sourcePath)}?ref=${encodeURIComponent(sourceBranch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -195,14 +191,9 @@ export async function GET(request: NextRequest) {
   }
 
   const targetResponse = await fetch(
-    `https://api.github.com/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodeContentPath(targetPath)}?ref=${encodeURIComponent(targetBranch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${parsedTarget.owner}/${parsedTarget.name}/contents/${encodeContentPath(targetPath)}?ref=${encodeURIComponent(targetBranch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );

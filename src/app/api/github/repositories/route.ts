@@ -3,6 +3,10 @@ import { readFile } from "node:fs/promises";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import {
+  GITHUB_API_BASE_URL,
+  getGithubHeaders,
+} from "@/lib/github-api-config";
+import {
   buildRepositoryConfigContent,
   getRepositoryInitTemplatePath,
   REPOSITORY_CONFIG_FILE_PATH,
@@ -59,14 +63,9 @@ async function fetchAllGithubRepositories(token: string) {
 
   while (hasNext) {
     const response = await fetch(
-      `https://api.github.com/user/repos?sort=updated&page=${currentPage}&per_page=100`,
+      `${GITHUB_API_BASE_URL}/user/repos?sort=updated&page=${currentPage}&per_page=100`,
       {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "blogex",
-        },
+        headers: getGithubHeaders(token),
         cache: "no-store",
       },
     );
@@ -92,14 +91,9 @@ async function fetchAllGithubRepositories(token: string) {
 
 async function hasBlogexConfig(token: string, repositoryFullName: string) {
   const response = await fetch(
-    `https://api.github.com/repos/${repositoryFullName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
+    `${GITHUB_API_BASE_URL}/repos/${repositoryFullName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -233,15 +227,9 @@ export async function POST(request: NextRequest) {
     return jsonError("FAILED_LOAD_DEFAULT_MARKDOWN_TEMPLATE");
   }
 
-  const githubResponse = await fetch("https://api.github.com/user/repos", {
+  const githubResponse = await fetch(`${GITHUB_API_BASE_URL}/user/repos`, {
     method: "POST",
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "blogex",
-    },
+    headers: getGithubHeaders(token, { withJson: true }),
     body: JSON.stringify({
       name,
       private: isPrivate,
@@ -272,16 +260,10 @@ export async function POST(request: NextRequest) {
 
   if (owner && repositoryName) {
     const blogexConfigResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repositoryName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
+      `${GITHUB_API_BASE_URL}/repos/${owner}/${repositoryName}/contents/${REPOSITORY_CONFIG_FILE_PATH}`,
       {
         method: "PUT",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "blogex",
-        },
+        headers: getGithubHeaders(token, { withJson: true }),
         body: JSON.stringify({
           message: createRepositoryConfigCommitMessage(),
           content: Buffer.from(buildRepositoryConfigContent(owner)).toString(
@@ -311,16 +293,10 @@ export async function POST(request: NextRequest) {
     }
 
     const createPostsDirectoryResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repositoryName}/contents/${REPOSITORY_INIT_TARGET_FILE_PATH}`,
+      `${GITHUB_API_BASE_URL}/repos/${owner}/${repositoryName}/contents/${REPOSITORY_INIT_TARGET_FILE_PATH}`,
       {
         method: "PUT",
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "blogex",
-        },
+        headers: getGithubHeaders(token, { withJson: true }),
         body: JSON.stringify({
           message: createRepositoryInitPostCommitMessage(),
           content: Buffer.from(defaultPostContent).toString("base64"),

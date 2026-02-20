@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import {
+  GITHUB_API_BASE_URL,
+  getGithubHeaders,
+} from "@/lib/github-api-config";
+import {
   buildInitialMarkdownFromTitle,
   normalizeMarkdownFileName,
   titleToMarkdownFileName,
@@ -103,14 +107,9 @@ export async function GET(request: NextRequest) {
   const encodedPath = encodeContentPath(filePath);
 
   const githubResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -191,14 +190,9 @@ export async function PUT(request: NextRequest) {
   const encodedPath = encodeContentPath(filePath);
 
   const currentFileResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -232,16 +226,10 @@ export async function PUT(request: NextRequest) {
   const normalizedMarkdown = applyLineEnding(markdown, currentLineEnding);
 
   const updateResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedPath}`,
     {
       method: "PUT",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message: commitMessage,
         content: Buffer.from(normalizedMarkdown).toString("base64"),
@@ -321,14 +309,9 @@ export async function POST(request: NextRequest) {
   const encodedPath = encodeContentPath(filePath);
 
   const existingResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -347,16 +330,10 @@ export async function POST(request: NextRequest) {
   }
 
   const createResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedPath}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedPath}`,
     {
       method: "PUT",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message: commitMessage,
         content: Buffer.from(markdown).toString("base64"),
@@ -453,14 +430,9 @@ export async function PATCH(request: NextRequest) {
   const encodedNextPath = encodeContentPath(nextPath);
 
   const currentFileResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedCurrentPath}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedCurrentPath}?ref=${encodeURIComponent(branch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -484,14 +456,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   const existingTargetResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedNextPath}?ref=${encodeURIComponent(branch)}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedNextPath}?ref=${encodeURIComponent(branch)}`,
     {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token),
       cache: "no-store",
     },
   );
@@ -518,16 +485,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   const putResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedNextPath}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedNextPath}`,
     {
       method: "PUT",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message:
           payload.message?.trim() || createRenameMarkdownCommitMessage(nextFileName),
@@ -551,16 +512,10 @@ export async function PATCH(request: NextRequest) {
   }
 
   const deleteResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/contents/${encodedCurrentPath}`,
+    `${GITHUB_API_BASE_URL}/repos/${owner}/${name}/contents/${encodedCurrentPath}`,
     {
       method: "DELETE",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "blogex",
-      },
+      headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message: createDeleteOldMarkdownAfterRenameCommitMessage(filePath),
         sha: currentFile.sha,
