@@ -1,7 +1,7 @@
 "use client";
 
 import matter from "gray-matter";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { FileSyncStatusValue } from "@/components/file-sync-status";
 import {
   CONNECT_SESSION_KEY,
@@ -50,6 +50,127 @@ type RepositoryCacheState = {
   updatedAt: number;
 };
 
+type WorkspaceUIState = {
+  step: "repository" | "branch" | "explorer";
+  message: string | null;
+  editorView: "edit" | "preview";
+  isLoadingRepositories: boolean;
+  isLoadingBranches: boolean;
+  isLoadingPosts: boolean;
+  isLoadingMarkdown: boolean;
+  isSavingMarkdown: boolean;
+  isResuming: boolean;
+  isCreatingMarkdown: boolean;
+  isRenamingMarkdown: boolean;
+  isRenameEditorOpen: boolean;
+  isComparingMarkdown: boolean;
+  isComparePanelOpen: boolean;
+  compareStatus: SyncCompareStatus | "idle" | "error";
+  compareDiff: string;
+  compareMessage: string | null;
+};
+
+type WorkspaceUILoadingKey =
+  | "isLoadingRepositories"
+  | "isLoadingBranches"
+  | "isLoadingPosts"
+  | "isLoadingMarkdown"
+  | "isSavingMarkdown"
+  | "isResuming"
+  | "isCreatingMarkdown"
+  | "isRenamingMarkdown"
+  | "isComparingMarkdown";
+
+type WorkspaceUIAction =
+  | { type: "set_step"; step: WorkspaceUIState["step"] }
+  | { type: "set_message"; message: string | null }
+  | { type: "set_editor_view"; editorView: WorkspaceUIState["editorView"] }
+  | { type: "set_loading"; key: WorkspaceUILoadingKey; value: boolean }
+  | { type: "open_rename_editor" }
+  | { type: "close_rename_editor" }
+  | { type: "open_compare_panel" }
+  | { type: "close_compare_panel" }
+  | {
+      type: "set_compare";
+      compareStatus?: WorkspaceUIState["compareStatus"];
+      compareDiff?: string;
+      compareMessage?: string | null;
+    }
+  | { type: "reset_compare" }
+  | { type: "reset_editor_ui" };
+
+const INITIAL_WORKSPACE_UI_STATE: WorkspaceUIState = {
+  step: "repository",
+  message: null,
+  editorView: "edit",
+  isLoadingRepositories: true,
+  isLoadingBranches: false,
+  isLoadingPosts: false,
+  isLoadingMarkdown: false,
+  isSavingMarkdown: false,
+  isResuming: false,
+  isCreatingMarkdown: false,
+  isRenamingMarkdown: false,
+  isRenameEditorOpen: false,
+  isComparingMarkdown: false,
+  isComparePanelOpen: false,
+  compareStatus: "idle",
+  compareDiff: "",
+  compareMessage: null,
+};
+
+function workspaceUIReducer(
+  state: WorkspaceUIState,
+  action: WorkspaceUIAction,
+): WorkspaceUIState {
+  switch (action.type) {
+    case "set_step":
+      return { ...state, step: action.step };
+    case "set_message":
+      return { ...state, message: action.message };
+    case "set_editor_view":
+      return { ...state, editorView: action.editorView };
+    case "set_loading":
+      return { ...state, [action.key]: action.value };
+    case "open_rename_editor":
+      return { ...state, isRenameEditorOpen: true };
+    case "close_rename_editor":
+      return { ...state, isRenameEditorOpen: false };
+    case "open_compare_panel":
+      return { ...state, isComparePanelOpen: true };
+    case "close_compare_panel":
+      return { ...state, isComparePanelOpen: false };
+    case "set_compare":
+      return {
+        ...state,
+        compareStatus: action.compareStatus ?? state.compareStatus,
+        compareDiff: action.compareDiff ?? state.compareDiff,
+        compareMessage:
+          action.compareMessage !== undefined ? action.compareMessage : state.compareMessage,
+      };
+    case "reset_compare":
+      return {
+        ...state,
+        isComparePanelOpen: false,
+        compareStatus: "idle",
+        compareDiff: "",
+        compareMessage: null,
+      };
+    case "reset_editor_ui":
+      return {
+        ...state,
+        editorView: "edit",
+        isRenameEditorOpen: false,
+        isComparePanelOpen: false,
+        compareStatus: "idle",
+        compareDiff: "",
+        compareMessage: null,
+      };
+    default:
+      return state;
+  }
+}
+
 export function useWorkspaceFlow() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -61,26 +182,7 @@ export function useWorkspaceFlow() {
   const [selectedPostName, setSelectedPostName] = useState("");
   const [markdownContent, setMarkdownContent] = useState("");
   const [editorContent, setEditorContent] = useState("");
-  const [editorView, setEditorView] = useState<"edit" | "preview">("edit");
-
-  const [step, setStep] = useState<"repository" | "branch" | "explorer">("repository");
-  const [message, setMessage] = useState<string | null>(null);
-  const [isLoadingRepositories, setIsLoadingRepositories] = useState(true);
-  const [isLoadingBranches, setIsLoadingBranches] = useState(false);
-  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
-  const [isLoadingMarkdown, setIsLoadingMarkdown] = useState(false);
-  const [isSavingMarkdown, setIsSavingMarkdown] = useState(false);
-  const [isResuming, setIsResuming] = useState(false);
-  const [isCreatingMarkdown, setIsCreatingMarkdown] = useState(false);
-  const [isRenamingMarkdown, setIsRenamingMarkdown] = useState(false);
-  const [isRenameEditorOpen, setIsRenameEditorOpen] = useState(false);
-  const [isComparingMarkdown, setIsComparingMarkdown] = useState(false);
-  const [isComparePanelOpen, setIsComparePanelOpen] = useState(false);
-  const [compareStatus, setCompareStatus] = useState<SyncCompareStatus | "idle" | "error">(
-    "idle",
-  );
-  const [compareDiff, setCompareDiff] = useState("");
-  const [compareMessage, setCompareMessage] = useState<string | null>(null);
+  const [uiState, dispatchUI] = useReducer(workspaceUIReducer, INITIAL_WORKSPACE_UI_STATE);
 
   const [repoSearchQuery, setRepoSearchQuery] = useState("");
   const [branchSearchQuery, setBranchSearchQuery] = useState("");
@@ -92,6 +194,26 @@ export function useWorkspaceFlow() {
   const [targetConfig, setTargetConfig] = useState<TargetConfig | null>(null);
   const [targetStatus, setTargetStatus] = useState<TargetStatus>("unavailable");
   const syncStatusRequestId = useRef(0);
+
+  const {
+    step,
+    message,
+    editorView,
+    isLoadingRepositories,
+    isLoadingBranches,
+    isLoadingPosts,
+    isLoadingMarkdown,
+    isSavingMarkdown,
+    isResuming,
+    isCreatingMarkdown,
+    isRenamingMarkdown,
+    isRenameEditorOpen,
+    isComparingMarkdown,
+    isComparePanelOpen,
+    compareStatus,
+    compareDiff,
+    compareMessage,
+  } = uiState;
 
   const filteredRepositories = useMemo(() => {
     const query = repoSearchQuery.trim().toLowerCase();
@@ -223,8 +345,8 @@ export function useWorkspaceFlow() {
     restoredState?: PersistedConnectState,
     options?: { forceRefresh?: boolean },
   ) {
-    setIsLoadingRepositories(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isLoadingRepositories", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       let allRepositories: Repository[] = [];
@@ -238,7 +360,7 @@ export function useWorkspaceFlow() {
       } else {
         const result = await loadRepositoriesFromApi();
         if (!result.ok) {
-          setMessage(result.error);
+          dispatchUI({ type: "set_message", message: result.error });
           setRepositories([]);
           return;
         }
@@ -251,7 +373,7 @@ export function useWorkspaceFlow() {
       setRepositories(allRepositories);
       setTotalPages(resolvedTotalPages);
       setSelectedRepo(allRepositories.length > 0 ? allRepositories[0].fullName : "");
-      setStep("repository");
+      dispatchUI({ type: "set_step", step: "repository" });
       setBranches([]);
       setPostFiles([]);
       setSelectedBranch("");
@@ -260,12 +382,7 @@ export function useWorkspaceFlow() {
       setRenameFileName("");
       setMarkdownContent("");
       setEditorContent("");
-      setEditorView("edit");
-      setIsRenameEditorOpen(false);
-      setIsComparePanelOpen(false);
-      setCompareStatus("idle");
-      setCompareDiff("");
-      setCompareMessage(null);
+      dispatchUI({ type: "reset_editor_ui" });
 
       if (!restoredState?.selectedRepo) {
         return;
@@ -273,7 +390,10 @@ export function useWorkspaceFlow() {
 
       const availableRepos = new Set(allRepositories.map((repo) => repo.fullName));
       if (!availableRepos.has(restoredState.selectedRepo)) {
-        setMessage("Saved session repo is no longer available.");
+        dispatchUI({
+          type: "set_message",
+          message: "Saved session repo is no longer available.",
+        });
         return;
       }
 
@@ -297,7 +417,7 @@ export function useWorkspaceFlow() {
       setSelectedBranch(restoredBranch);
 
       if (restoredState.step === "branch") {
-        setStep("branch");
+        dispatchUI({ type: "set_step", step: "branch" });
         return;
       }
 
@@ -306,7 +426,7 @@ export function useWorkspaceFlow() {
         return;
       }
 
-      setStep("explorer");
+      dispatchUI({ type: "set_step", step: "explorer" });
 
       if (loadedFiles.length === 0) {
         return;
@@ -321,21 +441,24 @@ export function useWorkspaceFlow() {
       await loadMarkdownFile(restoredState.selectedRepo, restoredBranch, restoredPath);
     } catch {
       setRepositories([]);
-      setMessage("Request failed while loading repositories.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while loading repositories.",
+      });
     } finally {
-      setIsLoadingRepositories(false);
+      dispatchUI({ type: "set_loading", key: "isLoadingRepositories", value: false });
     }
   }
 
   async function loadBranches(repoFullName: string) {
-    setIsLoadingBranches(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isLoadingBranches", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await fetchRepositoryBranches(repoFullName);
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         setBranches([]);
         return null;
       }
@@ -346,22 +469,22 @@ export function useWorkspaceFlow() {
       return fetchedBranches;
     } catch {
       setBranches([]);
-      setMessage("Request failed while loading branches.");
+      dispatchUI({ type: "set_message", message: "Request failed while loading branches." });
       return null;
     } finally {
-      setIsLoadingBranches(false);
+      dispatchUI({ type: "set_loading", key: "isLoadingBranches", value: false });
     }
   }
 
   async function loadPostFiles(repoFullName: string, branchName: string) {
-    setIsLoadingPosts(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isLoadingPosts", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await fetchRepositoryPosts(repoFullName, branchName);
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         setPostFiles([]);
         return null;
       }
@@ -371,30 +494,29 @@ export function useWorkspaceFlow() {
       setSelectedPostPath(fetchedFiles.length > 0 ? fetchedFiles[0].path : "");
       setSelectedPostName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
       setRenameFileName(fetchedFiles.length > 0 ? fetchedFiles[0].name : "");
-      setIsRenameEditorOpen(false);
-      setIsComparePanelOpen(false);
-      setCompareStatus("idle");
-      setCompareDiff("");
-      setCompareMessage(null);
+      dispatchUI({ type: "reset_editor_ui" });
       return fetchedFiles;
     } catch {
       setPostFiles([]);
-      setMessage("Request failed while loading markdown files.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while loading markdown files.",
+      });
       return null;
     } finally {
-      setIsLoadingPosts(false);
+      dispatchUI({ type: "set_loading", key: "isLoadingPosts", value: false });
     }
   }
 
   async function loadMarkdownFile(repoFullName: string, branchName: string, filePath: string) {
-    setIsLoadingMarkdown(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isLoadingMarkdown", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await fetchMarkdownContent(repoFullName, branchName, filePath);
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         setMarkdownContent("");
         return;
       }
@@ -405,24 +527,18 @@ export function useWorkspaceFlow() {
       setSelectedPostPath(data.path ?? filePath);
       setSelectedPostName(data.name ?? filePath.split("/").pop() ?? filePath);
       setRenameFileName(data.name ?? filePath.split("/").pop() ?? filePath);
-      setEditorView("edit");
-      setIsRenameEditorOpen(false);
-      setIsComparePanelOpen(false);
-      setCompareStatus("idle");
-      setCompareDiff("");
-      setCompareMessage(null);
+      dispatchUI({ type: "reset_editor_ui" });
     } catch {
-      setMessage("Request failed while loading markdown content.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while loading markdown content.",
+      });
       setMarkdownContent("");
       setEditorContent("");
       setRenameFileName("");
-      setIsRenameEditorOpen(false);
-      setIsComparePanelOpen(false);
-      setCompareStatus("idle");
-      setCompareDiff("");
-      setCompareMessage(null);
+      dispatchUI({ type: "reset_editor_ui" });
     } finally {
-      setIsLoadingMarkdown(false);
+      dispatchUI({ type: "set_loading", key: "isLoadingMarkdown", value: false });
     }
   }
 
@@ -587,13 +703,13 @@ export function useWorkspaceFlow() {
 
   async function handleNextToBranches() {
     if (!selectedRepo) {
-      setMessage("Select a repository first.");
+      dispatchUI({ type: "set_message", message: "Select a repository first." });
       return;
     }
 
     const fetchedBranches = await loadBranches(selectedRepo);
     if (fetchedBranches) {
-      setStep("branch");
+      dispatchUI({ type: "set_step", step: "branch" });
     }
   }
 
@@ -609,11 +725,11 @@ export function useWorkspaceFlow() {
       return;
     }
 
-    setIsResuming(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isResuming", value: true });
+    dispatchUI({ type: "set_message", message: null });
     await loadAllRepositories(resumeState);
     setResumeState(null);
-    setIsResuming(false);
+    dispatchUI({ type: "set_loading", key: "isResuming", value: false });
   }
 
   async function handleRefreshRepositories() {
@@ -622,7 +738,10 @@ export function useWorkspaceFlow() {
 
   async function handleConnectToExplorer() {
     if (!selectedRepo || !selectedBranch) {
-      setMessage("Select a repository and branch first.");
+      dispatchUI({
+        type: "set_message",
+        message: "Select a repository and branch first.",
+      });
       return;
     }
 
@@ -638,7 +757,7 @@ export function useWorkspaceFlow() {
       setEditorContent("");
     }
 
-    setStep("explorer");
+    dispatchUI({ type: "set_step", step: "explorer" });
 
     const config = await loadTargetConfig(selectedRepo, selectedBranch);
     if (loadedFiles.length > 0) {
@@ -650,7 +769,10 @@ export function useWorkspaceFlow() {
 
   async function handleOpenFile(file: PostFile) {
     if (!selectedRepo || !selectedBranch) {
-      setMessage("Repository or branch is not selected.");
+      dispatchUI({
+        type: "set_message",
+        message: "Repository or branch is not selected.",
+      });
       return;
     }
 
@@ -660,12 +782,15 @@ export function useWorkspaceFlow() {
 
   async function handleSaveMarkdown() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
-      setMessage("Select a markdown file before saving.");
+      dispatchUI({
+        type: "set_message",
+        message: "Select a markdown file before saving.",
+      });
       return;
     }
 
-    setIsSavingMarkdown(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isSavingMarkdown", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await saveMarkdownContent({
@@ -677,33 +802,42 @@ export function useWorkspaceFlow() {
       });
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         return;
       }
 
       setMarkdownContent(editorContent);
-      setMessage(result.data.message ?? "Saved successfully.");
+      dispatchUI({
+        type: "set_message",
+        message: result.data.message ?? "Saved successfully.",
+      });
     } catch {
-      setMessage("Request failed while saving markdown file.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while saving markdown file.",
+      });
     } finally {
-      setIsSavingMarkdown(false);
+      dispatchUI({ type: "set_loading", key: "isSavingMarkdown", value: false });
     }
   }
 
   async function handleCreateMarkdownFile() {
     if (!selectedRepo || !selectedBranch) {
-      setMessage("Select a repository and branch first.");
+      dispatchUI({
+        type: "set_message",
+        message: "Select a repository and branch first.",
+      });
       return;
     }
 
     const inputTitle = newMarkdownTitle.trim();
     if (!inputTitle) {
-      setMessage("Enter a title first.");
+      dispatchUI({ type: "set_message", message: "Enter a title first." });
       return;
     }
 
-    setIsCreatingMarkdown(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isCreatingMarkdown", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await createMarkdownFile({
@@ -713,7 +847,7 @@ export function useWorkspaceFlow() {
       });
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         return;
       }
 
@@ -728,23 +862,32 @@ export function useWorkspaceFlow() {
       }
 
       setNewMarkdownTitle("");
-      setMessage(data.message ?? "Markdown file created.");
+      dispatchUI({
+        type: "set_message",
+        message: data.message ?? "Markdown file created.",
+      });
     } catch {
-      setMessage("Request failed while creating markdown file.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while creating markdown file.",
+      });
     } finally {
-      setIsCreatingMarkdown(false);
+      dispatchUI({ type: "set_loading", key: "isCreatingMarkdown", value: false });
     }
   }
 
   async function handleRenameMarkdown() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
-      setMessage("Select a markdown file before renaming.");
+      dispatchUI({
+        type: "set_message",
+        message: "Select a markdown file before renaming.",
+      });
       return;
     }
 
     const nextName = renameFileName.trim();
     if (!nextName) {
-      setMessage("Enter a filename first.");
+      dispatchUI({ type: "set_message", message: "Enter a filename first." });
       return;
     }
 
@@ -752,12 +895,12 @@ export function useWorkspaceFlow() {
     const normalizedNext = normalizeMarkdownFileName(nextName);
 
     if (normalizedCurrent && normalizedNext && normalizedCurrent === normalizedNext) {
-      setIsRenameEditorOpen(false);
+      dispatchUI({ type: "close_rename_editor" });
       return;
     }
 
-    setIsRenamingMarkdown(true);
-    setMessage(null);
+    dispatchUI({ type: "set_loading", key: "isRenamingMarkdown", value: true });
+    dispatchUI({ type: "set_message", message: null });
 
     try {
       const result = await renameMarkdownFile({
@@ -768,7 +911,7 @@ export function useWorkspaceFlow() {
       });
 
       if (!result.ok) {
-        setMessage(result.error);
+        dispatchUI({ type: "set_message", message: result.error });
         return;
       }
 
@@ -781,31 +924,44 @@ export function useWorkspaceFlow() {
         }
       }
 
-      setMessage(data.message ?? "Markdown file renamed.");
-      setIsRenameEditorOpen(false);
+      dispatchUI({
+        type: "set_message",
+        message: data.message ?? "Markdown file renamed.",
+      });
+      dispatchUI({ type: "close_rename_editor" });
     } catch {
-      setMessage("Request failed while renaming markdown file.");
+      dispatchUI({
+        type: "set_message",
+        message: "Request failed while renaming markdown file.",
+      });
     } finally {
-      setIsRenamingMarkdown(false);
+      dispatchUI({ type: "set_loading", key: "isRenamingMarkdown", value: false });
     }
   }
 
   async function handleCompareMarkdown() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
-      setMessage("Select a markdown file before comparing.");
+      dispatchUI({
+        type: "set_message",
+        message: "Select a markdown file before comparing.",
+      });
       return;
     }
 
     if (!targetConfig) {
-      setIsComparePanelOpen(true);
-      setCompareStatus("error");
-      setCompareDiff("");
-      setCompareMessage("Target repository is not configured. Update workspace settings first.");
+      dispatchUI({ type: "open_compare_panel" });
+      dispatchUI({
+        type: "set_compare",
+        compareStatus: "error",
+        compareDiff: "",
+        compareMessage:
+          "Target repository is not configured. Update workspace settings first.",
+      });
       return;
     }
 
-    setIsComparingMarkdown(true);
-    setCompareMessage(null);
+    dispatchUI({ type: "set_loading", key: "isComparingMarkdown", value: true });
+    dispatchUI({ type: "set_compare", compareMessage: null });
 
     try {
       const result = await fetchMarkdownSyncDiff({
@@ -817,12 +973,15 @@ export function useWorkspaceFlow() {
         targetDirectory: targetConfig.targetDirectory,
       });
 
-      setIsComparePanelOpen(true);
+      dispatchUI({ type: "open_compare_panel" });
 
       if (!result.ok) {
-        setCompareStatus("error");
-        setCompareDiff("");
-        setCompareMessage(result.error);
+        dispatchUI({
+          type: "set_compare",
+          compareStatus: "error",
+          compareDiff: "",
+          compareMessage: result.error,
+        });
         return;
       }
 
@@ -830,24 +989,39 @@ export function useWorkspaceFlow() {
       const status = data.status ?? "error";
 
       if (status === "same") {
-        setCompareMessage("Source and target files are identical.");
+        dispatchUI({
+          type: "set_compare",
+          compareMessage: "Source and target files are identical.",
+        });
       } else if (status === "missing_target") {
-        setCompareMessage("Target file does not exist yet.");
+        dispatchUI({
+          type: "set_compare",
+          compareMessage: "Target file does not exist yet.",
+        });
       } else if (status === "missing_source") {
-        setCompareMessage("Source file is missing.");
+        dispatchUI({
+          type: "set_compare",
+          compareMessage: "Source file is missing.",
+        });
       } else {
-        setCompareMessage(null);
+        dispatchUI({ type: "set_compare", compareMessage: null });
       }
 
-      setCompareStatus(status);
-      setCompareDiff(data.diff ?? "");
+      dispatchUI({
+        type: "set_compare",
+        compareStatus: status,
+        compareDiff: data.diff ?? "",
+      });
     } catch {
-      setIsComparePanelOpen(true);
-      setCompareStatus("error");
-      setCompareDiff("");
-      setCompareMessage("Request failed while comparing markdown files.");
+      dispatchUI({ type: "open_compare_panel" });
+      dispatchUI({
+        type: "set_compare",
+        compareStatus: "error",
+        compareDiff: "",
+        compareMessage: "Request failed while comparing markdown files.",
+      });
     } finally {
-      setIsComparingMarkdown(false);
+      dispatchUI({ type: "set_loading", key: "isComparingMarkdown", value: false });
     }
   }
 
@@ -919,15 +1093,17 @@ export function useWorkspaceFlow() {
       setSelectedBranch,
       setNewMarkdownTitle,
       setRenameFileName,
-      setEditorView,
+      setEditorView: (nextView: "edit" | "preview") =>
+        dispatchUI({ type: "set_editor_view", editorView: nextView }),
       setEditorContent,
-      setStep,
-      openRenameEditor: () => setIsRenameEditorOpen(true),
+      setStep: (nextStep: "repository" | "branch" | "explorer") =>
+        dispatchUI({ type: "set_step", step: nextStep }),
+      openRenameEditor: () => dispatchUI({ type: "open_rename_editor" }),
       closeRenameEditor: () => {
-        setIsRenameEditorOpen(false);
+        dispatchUI({ type: "close_rename_editor" });
         setRenameFileName(selectedPostName);
       },
-      closeComparePanel: () => setIsComparePanelOpen(false),
+      closeComparePanel: () => dispatchUI({ type: "close_compare_panel" }),
       startFresh: handleStartFresh,
       resumeSession: handleResumeSession,
       refreshRepositories: handleRefreshRepositories,
