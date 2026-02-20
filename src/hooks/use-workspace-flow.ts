@@ -50,6 +50,13 @@ type RepositoryCacheState = {
   updatedAt: number;
 };
 
+/**
+ * UI-only state for the workspace flow.
+ *
+ * This reducer intentionally owns transient UI concerns (panels, loading flags,
+ * compare status, user-facing message) while domain selections/content are kept
+ * in dedicated `useState` fields.
+ */
 type WorkspaceUIState = {
   step: "repository" | "branch" | "explorer";
   message: string | null;
@@ -119,6 +126,12 @@ const INITIAL_WORKSPACE_UI_STATE: WorkspaceUIState = {
   compareMessage: null,
 };
 
+/**
+ * Reducer for predictable UI transitions in the workspace flow.
+ *
+ * Note: `reset_editor_ui` is used after repository/branch/file switches to
+ * avoid leaking editor/compare UI state across different files.
+ */
 function workspaceUIReducer(
   state: WorkspaceUIState,
   action: WorkspaceUIAction,
@@ -171,6 +184,15 @@ function workspaceUIReducer(
   }
 }
 
+/**
+ * Orchestrates the end-to-end workspace wizard:
+ * repository -> branch -> markdown explorer/editor.
+ *
+ * Public contract:
+ * - `state`: source-of-truth values consumed by page/step components.
+ * - `derived`: memoized computed values (filters, frontmatter parse, guards).
+ * - `actions`: user-triggered workflows and setters.
+ */
 export function useWorkspaceFlow() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -265,6 +287,10 @@ export function useWorkspaceFlow() {
     !renameFileName.trim() ||
     normalizeMarkdownFileName(renameFileName) === normalizeMarkdownFileName(selectedPostName);
 
+  /**
+   * Exhaustively loads all pages from the repositories API endpoint.
+   * Used when local cache is absent/expired or refresh is explicitly requested.
+   */
   async function loadRepositoriesFromApi() {
     const allRepositories: Repository[] = [];
     let currentPage = 1;
@@ -300,6 +326,9 @@ export function useWorkspaceFlow() {
     };
   }
 
+  /**
+   * Reads repository cache from localStorage and invalidates malformed/expired entries.
+   */
   function readRepositoryCache(): RepositoryCacheState | null {
     if (typeof window === "undefined") {
       return null;
@@ -327,6 +356,9 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /**
+   * Persists the flattened repository list used by the repository step search UI.
+   */
   function writeRepositoryCache(repositoriesToCache: Repository[], pages: number | null) {
     if (typeof window === "undefined") {
       return;
@@ -341,6 +373,10 @@ export function useWorkspaceFlow() {
     window.localStorage.setItem(REPOSITORY_CACHE_KEY, JSON.stringify(payload));
   }
 
+  /**
+   * Loads repositories and optionally restores a previously persisted wizard state.
+   * This is the bootstrap entrypoint for the workspace page.
+   */
   async function loadAllRepositories(
     restoredState?: PersistedConnectState,
     options?: { forceRefresh?: boolean },
@@ -450,6 +486,7 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /** Loads branch options for the selected repository. */
   async function loadBranches(repoFullName: string) {
     dispatchUI({ type: "set_loading", key: "isLoadingBranches", value: true });
     dispatchUI({ type: "set_message", message: null });
@@ -476,6 +513,7 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /** Loads markdown files under `_posts` for a repo/branch pair. */
   async function loadPostFiles(repoFullName: string, branchName: string) {
     dispatchUI({ type: "set_loading", key: "isLoadingPosts", value: true });
     dispatchUI({ type: "set_message", message: null });
@@ -508,6 +546,7 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /** Loads one markdown file and resets editor-specific UI state. */
   async function loadMarkdownFile(repoFullName: string, branchName: string, filePath: string) {
     dispatchUI({ type: "set_loading", key: "isLoadingMarkdown", value: true });
     dispatchUI({ type: "set_message", message: null });
@@ -542,6 +581,7 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /** Reads target sync configuration from `blogex.config.json` for status/compare flows. */
   async function loadTargetConfig(repoFullName: string, branchName: string) {
     try {
       const result = await fetchRepositoryConfig(repoFullName, branchName);
@@ -582,6 +622,10 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /**
+   * Checks if the selected source markdown exists in the configured target repo.
+   * A request id guard prevents stale async responses from overwriting newer state.
+   */
   async function checkTargetStatus(filePath: string, configOverride?: TargetConfig | null) {
     const config = configOverride ?? targetConfig;
 
@@ -619,6 +663,11 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /**
+   * Initial bootstrap:
+   * 1) load repositories (cache-first),
+   * 2) detect resumable workspace session from localStorage.
+   */
   useEffect(() => {
     void loadAllRepositories();
 
@@ -648,6 +697,7 @@ export function useWorkspaceFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Persists current wizard context to support "resume workspace session". */
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -939,6 +989,11 @@ export function useWorkspaceFlow() {
     }
   }
 
+  /**
+   * Computes source vs target diff for the currently selected markdown file.
+   * The compare panel is opened for both success and error outcomes so the user
+   * always gets explicit feedback.
+   */
   async function handleCompareMarkdown() {
     if (!selectedRepo || !selectedBranch || !selectedPostPath) {
       dispatchUI({
@@ -1042,6 +1097,7 @@ export function useWorkspaceFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, selectedPostPath, targetConfig]);
 
+  // Stable public API consumed by `connect-repositories-page`.
   return {
     state: {
       repositories,
