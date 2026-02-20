@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HomeIcon } from "@/components/icons";
-import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
+import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/cache-config";
 import {
   fetchRepositoryConfig,
   fetchSyncMarkdownFiles,

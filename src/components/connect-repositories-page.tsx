@@ -9,8 +9,13 @@ import BranchStep from "@/components/workspace/branch-step";
 import ExplorerStep from "@/components/workspace/explorer-step";
 import RepositoryStep from "@/components/workspace/repository-step";
 import ResumeWorkspaceSessionBanner from "@/components/workspace/resume-workspace-session-banner";
+import {
+  CONNECT_SESSION_KEY,
+  CONNECT_SESSION_TTL_MS,
+  REPOSITORY_CACHE_KEY,
+  REPOSITORY_CACHE_TTL_MS,
+} from "@/lib/cache-config";
 import { createUpdateMarkdownCommitMessage } from "@/lib/commit-messages";
-import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/connect-session";
 import { normalizeMarkdownFileName } from "@/lib/markdown-post";
 import {
   createMarkdownFile,
@@ -50,9 +55,6 @@ type RepositoryCacheState = {
   totalPages: number | null;
   updatedAt: number;
 };
-
-const REPOSITORY_CACHE_KEY = "blogex:repositories-cache";
-const REPOSITORY_CACHE_TTL_MS = 1000 * 60 * 60 * 12;
 
 export default function ConnectRepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([]);
