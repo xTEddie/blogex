@@ -69,13 +69,22 @@ npm install
    7. Copy the `Client ID`.
    8. Click `Generate a new client secret`, then copy the generated secret.
 
-4. Create `.env.local` in the project root:
+4. Create `.env.local`:
 
-```env
-GITHUB_CLIENT_ID=your_github_oauth_client_id
-GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
-APP_URL=http://localhost:3000
-```
+   1. Copy the example file:
+
+      ```bash
+      cp .env.example .env.local
+      ```
+
+   2. Update `.env.local` with your values:
+
+      ```env
+      # .env.local
+      GITHUB_CLIENT_ID=your_github_oauth_client_id
+      GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+      APP_URL=http://localhost:3000
+      ```
 
 5. Run the app:
 
