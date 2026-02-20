@@ -143,3 +143,8 @@ Full configuration details and examples are available in [`docs/config.md`](docs
 ## API Reference
 
 Full API documentation is available in [`docs/api.md`](docs/api.md).
+
+## Contributing
+
+Contributions are welcome. Please open an issue for bugs or feature proposals before large changes.
+For pull requests, keep changes focused, update docs when behavior/API changes, and run `npm run lint` before submitting.
