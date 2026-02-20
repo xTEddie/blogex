@@ -1,6 +1,43 @@
 # blogex
 GitHub-native CMS for Markdown blogs.
 
+## Prerequisites
+
+- Node.js `v20.19.6` (recommended)
+- npm `v10+`
+- A GitHub OAuth App with:
+  - callback URL set to `http://localhost:3000/auth/github/callback` for local development
+
+## Install And Run
+
+1. Use the expected Node version:
+
+```bash
+nvm use 20.19.6
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create `.env.local` in the project root:
+
+```env
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+APP_URL=http://localhost:3000
+```
+
+4. Start the app:
+
+```bash
+npm run dev
+```
+
+5. Open `http://localhost:3000`.
+
 ## Features
 
 - GitHub OAuth login (GitHub-only) with secure cookie-based session.
