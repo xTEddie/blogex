@@ -111,30 +111,10 @@ npm run dev
 8. Logout
    - Use `Log out` on the user page to clear the session cookie and return home.
 
-## blogex.config.json
+## Configuration
 
-Each blogex repository has its own `blogex.config.json` at the repository root.
-This file stores per-repo workspace settings such as `owner`, `targetRepo`, `targetBranch`, and `targetDirectory`.
-
-`targetRepo`, `targetBranch`, and `targetDirectory` are configurable in Workspace Settings (`/workspace/settings`) and are saved back to `blogex.config.json`.
-
-Template (with comments):
-
-```jsonc
-{
-  // GitHub username or org that owns this blogex repository.
-  "owner": "xTEddie",
-
-  // Source/content repository in owner/repo format.
-  "targetRepo": "xTEddie/Blog",
-
-  // Branch in targetRepo used for sync and compare.
-  "targetBranch": "main",
-
-  // Directory in targetRepo that contains markdown posts.
-  "targetDirectory": "_posts"
-}
-```
+blogex uses a per-repository `blogex.config.json` file for workspace target settings.
+Full configuration details and examples are available in [`docs/config.md`](docs/config.md).
 
 ## API Reference
 
