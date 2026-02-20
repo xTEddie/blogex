@@ -8,7 +8,7 @@ GitHub-native CMS for Markdown blogs.
 - A GitHub OAuth App with:
   - callback URL set to `http://localhost:3000/auth/github/callback` for local development
 
-## Install And Run
+## Setup
 
 1. Use the expected Node version:
 
@@ -30,13 +30,46 @@ GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
 APP_URL=http://localhost:3000
 ```
 
-4. Start the app:
+## NPM Commands
+
+- `npm run dev`: start development server.
+- `npm run build`: create production build.
+- `npm run start`: run production server from build output.
+- `npm run lint`: run ESLint checks.
+
+## Run The App
+
+1. Start the app:
 
 ```bash
 npm run dev
 ```
 
-5. Open `http://localhost:3000`.
+2. Open `http://localhost:3000`.
+
+## blogex.config.json
+
+Each blogex repository has its own `blogex.config.json` at repo root. This config is per-repo and stores workspace settings like `owner`, `targetRepo`, `targetBranch`, and `targetDirectory`.
+
+`targetRepo`, `targetBranch`, and `targetDirectory` can be configured from the Workspace Settings page (`/workspace/settings`) and are saved back to `blogex.config.json`.
+
+Template (with comments):
+
+```jsonc
+{
+  // GitHub username/org that owns this blogex repository.
+  "owner": "xTEddie",
+
+  // Source/content repository to sync from (format: owner/repo).
+  "targetRepo": "xTEddie/Blog",
+
+  // Branch in targetRepo used for sync/compare.
+  "targetBranch": "main",
+
+  // Directory in targetRepo that contains markdown posts.
+  "targetDirectory": "_posts"
+}
+```
 
 ## Features
 
