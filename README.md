@@ -28,14 +28,16 @@ GitHub-native CMS for Markdown blogs.
   - source vs target unified diff compare
 - Mobile-friendly workspace UI with reusable icons and consistent custom scrollbars.
 
-## Prerequisites
+## Getting Started
+
+### Prerequisites
 
 - Node.js `v20.19.6` (recommended)
 - npm `v10+`
 - A GitHub OAuth App with callback URL set to:
   - `http://localhost:3000/auth/github/callback` (local development)
 
-## Setup
+### Setup
 
 1. Use the expected Node version:
 
@@ -49,7 +51,17 @@ nvm use 20.19.6
 npm install
 ```
 
-3. Create `.env.local` in the project root:
+3. Create a GitHub OAuth App:
+   1. Open GitHub and go to `Settings` -> `Developer settings` -> `OAuth Apps`.
+   2. Click `New OAuth App`.
+   3. Set `Application name` (example: `blogex-local`).
+   4. Set `Homepage URL` to `http://localhost:3000`.
+   5. Set `Authorization callback URL` to `http://localhost:3000/auth/github/callback`.
+   6. Click `Register application`.
+   7. Copy the `Client ID`.
+   8. Click `Generate a new client secret`, then copy the generated secret.
+
+4. Create `.env.local` in the project root:
 
 ```env
 GITHUB_CLIENT_ID=your_github_oauth_client_id
@@ -57,22 +69,20 @@ GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
 APP_URL=http://localhost:3000
 ```
 
+5. Run the app:
+
+```bash
+npm run dev
+```
+
+6. Open `http://localhost:3000`.
+
 ## NPM Commands
 
 - `npm run dev`: Start the development server.
 - `npm run build`: Build for production.
 - `npm run start`: Run the production server.
 - `npm run lint`: Run ESLint.
-
-## Run The App
-
-1. Start the app:
-
-```bash
-npm run dev
-```
-
-2. Open `http://localhost:3000`.
 
 ## blogex.config.json
 
