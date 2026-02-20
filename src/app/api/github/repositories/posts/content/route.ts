@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import {
   buildInitialMarkdownFromTitle,
   normalizeMarkdownFileName,
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const repo = request.nextUrl.searchParams.get("repo")?.trim();
@@ -82,32 +83,20 @@ export async function GET(request: NextRequest) {
   const filePath = request.nextUrl.searchParams.get("path")?.trim();
 
   if (!repo) {
-    return NextResponse.json(
-      { error: "Query param `repo` must be in `owner/name` format." },
-      { status: 400 },
-    );
+    return jsonError("REPO_QUERY_OWNER_NAME_REQUIRED");
   }
 
   if (!branch) {
-    return NextResponse.json(
-      { error: "Query param `branch` is required." },
-      { status: 400 },
-    );
+    return jsonError("BRANCH_QUERY_REQUIRED");
   }
 
   if (!filePath || !validateMarkdownPath(filePath)) {
-    return NextResponse.json(
-      { error: "Query param `path` must target a markdown file in _posts." },
-      { status: 400 },
-    );
+    return jsonError("PATH_QUERY_POSTS_MARKDOWN_REQUIRED");
   }
 
   const parsedRepo = parseRepository(repo);
   if (!parsedRepo) {
-    return NextResponse.json(
-      { error: "Invalid repository format." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_REPOSITORY_FORMAT");
   }
 
   const { owner, name } = parsedRepo;
@@ -129,7 +118,7 @@ export async function GET(request: NextRequest) {
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch markdown content." },
+      { error: errorData.message ?? API_ERRORS.FAILED_FETCH_MARKDOWN_CONTENT.message },
       { status: githubResponse.status },
     );
     if (githubResponse.status === 401) {
@@ -141,10 +130,7 @@ export async function GET(request: NextRequest) {
   const githubData = (await githubResponse.json()) as GithubFileResponse;
 
   if (githubData.type !== "file" || githubData.encoding !== "base64" || !githubData.content) {
-    return NextResponse.json(
-      { error: "Unsupported markdown file response format." },
-      { status: 500 },
-    );
+    return jsonError("UNSUPPORTED_MARKDOWN_FILE_RESPONSE_FORMAT");
   }
 
   const markdown = Buffer.from(githubData.content, "base64").toString("utf8");
@@ -163,14 +149,14 @@ export async function PUT(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: UpdateMarkdownPayload;
   try {
     payload = (await request.json()) as UpdateMarkdownPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const repo = payload.repo?.trim();
@@ -181,39 +167,24 @@ export async function PUT(request: NextRequest) {
     payload.message?.trim() || createUpdateMarkdownCommitMessage(payload.path);
 
   if (!repo) {
-    return NextResponse.json(
-      { error: "Field `repo` must be in `owner/name` format." },
-      { status: 400 },
-    );
+    return jsonError("REPO_FIELD_OWNER_NAME_REQUIRED");
   }
 
   if (!branch) {
-    return NextResponse.json(
-      { error: "Field `branch` is required." },
-      { status: 400 },
-    );
+    return jsonError("BRANCH_FIELD_REQUIRED");
   }
 
   if (!filePath || !validateMarkdownPath(filePath)) {
-    return NextResponse.json(
-      { error: "Field `path` must target a markdown file in _posts." },
-      { status: 400 },
-    );
+    return jsonError("PATH_FIELD_POSTS_MARKDOWN_REQUIRED");
   }
 
   if (typeof markdown !== "string") {
-    return NextResponse.json(
-      { error: "Field `markdown` must be a string." },
-      { status: 400 },
-    );
+    return jsonError("MARKDOWN_FIELD_STRING_REQUIRED");
   }
 
   const parsedRepo = parseRepository(repo);
   if (!parsedRepo) {
-    return NextResponse.json(
-      { error: "Invalid repository format." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_REPOSITORY_FORMAT");
   }
 
   const { owner, name } = parsedRepo;
@@ -235,7 +206,10 @@ export async function PUT(request: NextRequest) {
   if (!currentFileResponse.ok) {
     const errorData = (await currentFileResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch current file metadata." },
+      {
+        error:
+          errorData.message ?? API_ERRORS.FAILED_FETCH_CURRENT_FILE_METADATA.message,
+      },
       { status: currentFileResponse.status },
     );
     if (currentFileResponse.status === 401) {
@@ -246,10 +220,7 @@ export async function PUT(request: NextRequest) {
 
   const currentFile = (await currentFileResponse.json()) as GithubFileResponse;
   if (!currentFile.sha) {
-    return NextResponse.json(
-      { error: "Missing file sha from GitHub response." },
-      { status: 500 },
-    );
+    return jsonError("MISSING_FILE_SHA");
   }
 
   const currentMarkdown =
@@ -284,7 +255,7 @@ export async function PUT(request: NextRequest) {
   if (!updateResponse.ok) {
     const errorData = (await updateResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to update markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_UPDATE_MARKDOWN_FILE.message },
       { status: updateResponse.status },
     );
     if (updateResponse.status === 401) {
@@ -307,14 +278,14 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: CreateMarkdownPayload;
   try {
     payload = (await request.json()) as CreateMarkdownPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const repo = payload.repo?.trim();
@@ -330,32 +301,20 @@ export async function POST(request: NextRequest) {
     payload.message?.trim() || createAddMarkdownCommitMessage(normalizedFileName);
 
   if (!repo) {
-    return NextResponse.json(
-      { error: "Field `repo` must be in `owner/name` format." },
-      { status: 400 },
-    );
+    return jsonError("REPO_FIELD_OWNER_NAME_REQUIRED");
   }
 
   if (!branch) {
-    return NextResponse.json(
-      { error: "Field `branch` is required." },
-      { status: 400 },
-    );
+    return jsonError("BRANCH_FIELD_REQUIRED");
   }
 
   if (!filePath || !validateMarkdownPath(filePath)) {
-    return NextResponse.json(
-      { error: "Field `title` must produce a valid markdown file name." },
-      { status: 400 },
-    );
+    return jsonError("TITLE_FIELD_INVALID_MARKDOWN_FILENAME");
   }
 
   const parsedRepo = parseRepository(repo);
   if (!parsedRepo) {
-    return NextResponse.json(
-      { error: "Invalid repository format." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_REPOSITORY_FORMAT");
   }
 
   const { owner, name } = parsedRepo;
@@ -377,17 +336,14 @@ export async function POST(request: NextRequest) {
   if (existingResponse.status === 401) {
     const errorData = (await existingResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "GitHub token is no longer valid." },
+      { error: errorData.message ?? API_ERRORS.GITHUB_TOKEN_NO_LONGER_VALID.message },
       { status: 401 },
     );
     return clearAuthCookies(response);
   }
 
   if (existingResponse.status === 200) {
-    return NextResponse.json(
-      { error: "A markdown file with this name already exists." },
-      { status: 409 },
-    );
+    return jsonError("MARKDOWN_FILE_ALREADY_EXISTS");
   }
 
   const createResponse = await fetch(
@@ -413,7 +369,7 @@ export async function POST(request: NextRequest) {
   if (!createResponse.ok) {
     const errorData = (await createResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to create markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_CREATE_MARKDOWN_FILE.message },
       { status: createResponse.status },
     );
     if (createResponse.status === 401) {
@@ -438,14 +394,14 @@ export async function PATCH(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: RenameMarkdownPayload;
   try {
     payload = (await request.json()) as RenameMarkdownPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const repo = payload.repo?.trim();
@@ -455,39 +411,24 @@ export async function PATCH(request: NextRequest) {
   const nextPath = normalizedFileName ? `_posts/${normalizedFileName}` : null;
 
   if (!repo) {
-    return NextResponse.json(
-      { error: "Field `repo` must be in `owner/name` format." },
-      { status: 400 },
-    );
+    return jsonError("REPO_FIELD_OWNER_NAME_REQUIRED");
   }
 
   if (!branch) {
-    return NextResponse.json(
-      { error: "Field `branch` is required." },
-      { status: 400 },
-    );
+    return jsonError("BRANCH_FIELD_REQUIRED");
   }
 
   if (!filePath || !validateMarkdownPath(filePath)) {
-    return NextResponse.json(
-      { error: "Field `path` must target a markdown file in _posts." },
-      { status: 400 },
-    );
+    return jsonError("PATH_FIELD_POSTS_MARKDOWN_REQUIRED");
   }
 
   if (!nextPath || !validateMarkdownPath(nextPath)) {
-    return NextResponse.json(
-      { error: "Field `nextName` must be a valid markdown filename." },
-      { status: 400 },
-    );
+    return jsonError("NEXT_NAME_FIELD_INVALID_MARKDOWN_FILENAME");
   }
 
   const nextFileName = nextPath.split("/").pop();
   if (!nextFileName) {
-    return NextResponse.json(
-      { error: "Invalid target markdown filename." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_TARGET_MARKDOWN_FILENAME");
   }
 
   if (nextPath === filePath) {
@@ -504,10 +445,7 @@ export async function PATCH(request: NextRequest) {
 
   const parsedRepo = parseRepository(repo);
   if (!parsedRepo) {
-    return NextResponse.json(
-      { error: "Invalid repository format." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_REPOSITORY_FORMAT");
   }
 
   const { owner, name } = parsedRepo;
@@ -530,7 +468,7 @@ export async function PATCH(request: NextRequest) {
   if (!currentFileResponse.ok) {
     const errorData = (await currentFileResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch source file metadata." },
+      { error: errorData.message ?? API_ERRORS.FAILED_FETCH_SOURCE_FILE_METADATA.message },
       { status: currentFileResponse.status },
     );
     if (currentFileResponse.status === 401) {
@@ -542,10 +480,7 @@ export async function PATCH(request: NextRequest) {
   const currentFile = (await currentFileResponse.json()) as GithubFileResponse;
 
   if (!currentFile.sha || !currentFile.content || currentFile.encoding !== "base64") {
-    return NextResponse.json(
-      { error: "Unsupported source markdown file response format." },
-      { status: 500 },
-    );
+    return jsonError("UNSUPPORTED_SOURCE_MARKDOWN_FILE_RESPONSE_FORMAT");
   }
 
   const existingTargetResponse = await fetch(
@@ -564,23 +499,20 @@ export async function PATCH(request: NextRequest) {
   if (existingTargetResponse.status === 401) {
     const errorData = (await existingTargetResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "GitHub token is no longer valid." },
+      { error: errorData.message ?? API_ERRORS.GITHUB_TOKEN_NO_LONGER_VALID.message },
       { status: 401 },
     );
     return clearAuthCookies(response);
   }
 
   if (existingTargetResponse.status === 200) {
-    return NextResponse.json(
-      { error: "A markdown file with this name already exists." },
-      { status: 409 },
-    );
+    return jsonError("MARKDOWN_FILE_ALREADY_EXISTS");
   }
 
   if (existingTargetResponse.status !== 404) {
     const errorData = (await existingTargetResponse.json()) as { message?: string };
     return NextResponse.json(
-      { error: errorData.message ?? "Failed to check destination filename." },
+      { error: errorData.message ?? API_ERRORS.FAILED_CHECK_DESTINATION_FILENAME.message },
       { status: existingTargetResponse.status },
     );
   }
@@ -609,7 +541,7 @@ export async function PATCH(request: NextRequest) {
   if (!putResponse.ok) {
     const errorData = (await putResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to create renamed markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_CREATE_RENAMED_MARKDOWN_FILE.message },
       { status: putResponse.status },
     );
     if (putResponse.status === 401) {

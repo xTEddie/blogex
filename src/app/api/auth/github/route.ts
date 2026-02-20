@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-errors";
 
 const OAUTH_STATE_COOKIE = "gh_oauth_state";
 const CALLBACK_PATH = "/auth/github/callback";
@@ -11,10 +12,7 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.GITHUB_CLIENT_ID;
 
   if (!clientId) {
-    return NextResponse.json(
-      { error: "Missing GITHUB_CLIENT_ID environment variable." },
-      { status: 500 },
-    );
+    return jsonError("MISSING_GITHUB_CLIENT_ID");
   }
 
   const appUrl = getAppUrl(request);

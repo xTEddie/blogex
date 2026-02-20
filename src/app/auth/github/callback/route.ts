@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-errors";
 
 const OAUTH_STATE_COOKIE = "gh_oauth_state";
 const OAUTH_TOKEN_COOKIE = "gh_oauth_token";
@@ -21,13 +22,7 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.json(
-      {
-        error:
-          "Missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET environment variable.",
-      },
-      { status: 500 },
-    );
+    return jsonError("MISSING_GITHUB_OAUTH_ENV");
   }
 
   const requestUrl = new URL(request.url);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import { createUpdateBlogexConfigCommitMessage } from "@/lib/commit-messages";
 import { REPOSITORY_CONFIG_FILE_PATH } from "@/lib/repository-init-config";
 
@@ -90,17 +91,14 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const repo = request.nextUrl.searchParams.get("repo")?.trim();
   const branch = request.nextUrl.searchParams.get("branch")?.trim();
 
   if (!repo || !branch) {
-    return NextResponse.json(
-      { error: "Query params repo and branch are required." },
-      { status: 400 },
-    );
+    return jsonError("QUERY_REPO_AND_BRANCH_REQUIRED");
   }
 
   const result = await fetchExistingConfig(token, repo, branch);
@@ -117,7 +115,7 @@ export async function GET(request: NextRequest) {
 
   if (result.status !== 200) {
     const response = NextResponse.json(
-      { error: result.error?.message ?? "Failed to load blogex config." },
+      { error: result.error?.message ?? API_ERRORS.FAILED_LOAD_BLOGEX_CONFIG.message },
       { status: result.status },
     );
 
@@ -143,7 +141,7 @@ export async function PUT(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: UpdateConfigPayload;
@@ -151,31 +149,25 @@ export async function PUT(request: NextRequest) {
   try {
     payload = (await request.json()) as UpdateConfigPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const repo = payload.repo?.trim();
   const branch = payload.branch?.trim();
 
   if (!repo || !branch) {
-    return NextResponse.json(
-      { error: "Fields repo and branch are required." },
-      { status: 400 },
-    );
+    return jsonError("FIELDS_REPO_AND_BRANCH_REQUIRED");
   }
 
   if (!payload.config || typeof payload.config !== "object") {
-    return NextResponse.json(
-      { error: "Field config is required." },
-      { status: 400 },
-    );
+    return jsonError("FIELD_CONFIG_REQUIRED");
   }
 
   const existing = await fetchExistingConfig(token, repo, branch);
 
   if (existing.status !== 200 && existing.status !== 404) {
     const response = NextResponse.json(
-      { error: existing.error?.message ?? "Failed to check existing config." },
+      { error: existing.error?.message ?? API_ERRORS.FAILED_CHECK_EXISTING_CONFIG.message },
       { status: existing.status },
     );
 
@@ -207,7 +199,7 @@ export async function PUT(request: NextRequest) {
 
   if (!putResponse.ok) {
     const response = NextResponse.json(
-      { error: putData.message ?? "Failed to save blogex config." },
+      { error: putData.message ?? API_ERRORS.FAILED_SAVE_BLOGEX_CONFIG.message },
       { status: putResponse.status },
     );
 

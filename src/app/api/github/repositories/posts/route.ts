@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 
 type GithubContentItem = {
   type: "file" | "dir";
@@ -12,33 +13,24 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const repo = request.nextUrl.searchParams.get("repo")?.trim();
   const branch = request.nextUrl.searchParams.get("branch")?.trim();
 
   if (!repo || !repo.includes("/")) {
-    return NextResponse.json(
-      { error: "Query param `repo` must be in `owner/name` format." },
-      { status: 400 },
-    );
+    return jsonError("REPO_QUERY_OWNER_NAME_REQUIRED");
   }
 
   if (!branch) {
-    return NextResponse.json(
-      { error: "Query param `branch` is required." },
-      { status: 400 },
-    );
+    return jsonError("BRANCH_QUERY_REQUIRED");
   }
 
   const [owner, name] = repo.split("/", 2);
 
   if (!owner || !name) {
-    return NextResponse.json(
-      { error: "Invalid repository format." },
-      { status: 400 },
-    );
+    return jsonError("INVALID_REPOSITORY_FORMAT");
   }
 
   const githubResponse = await fetch(
@@ -61,7 +53,7 @@ export async function GET(request: NextRequest) {
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch _posts directory." },
+      { error: errorData.message ?? API_ERRORS.FAILED_FETCH_POSTS_DIRECTORY.message },
       { status: githubResponse.status },
     );
     if (githubResponse.status === 401) {

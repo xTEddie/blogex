@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 
 type GithubApiError = {
   message?: string;
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const targetRepo = request.nextUrl.searchParams.get("targetRepo")?.trim();
@@ -45,30 +46,21 @@ export async function GET(request: NextRequest) {
   const sourcePath = request.nextUrl.searchParams.get("sourcePath")?.trim();
 
   if (!targetRepo || !targetBranch || !sourcePath) {
-    return NextResponse.json(
-      { error: "Query params targetRepo, targetBranch and sourcePath are required." },
-      { status: 400 },
-    );
+    return jsonError("QUERY_TARGET_REPO_TARGET_BRANCH_SOURCE_PATH_REQUIRED");
   }
 
   if (!sourcePath.endsWith(".md")) {
-    return NextResponse.json(
-      { error: "sourcePath must be a markdown file." },
-      { status: 400 },
-    );
+    return jsonError("SOURCE_PATH_MARKDOWN_FILE_REQUIRED");
   }
 
   const parsedTarget = parseRepo(targetRepo);
   if (!parsedTarget) {
-    return NextResponse.json(
-      { error: "targetRepo must be in owner/name format." },
-      { status: 400 },
-    );
+    return jsonError("TARGET_REPO_OWNER_NAME_REQUIRED");
   }
 
   const fileName = sourcePath.split("/").pop();
   if (!fileName) {
-    return NextResponse.json({ error: "Invalid sourcePath." }, { status: 400 });
+    return jsonError("INVALID_SOURCE_PATH");
   }
 
   const targetPath = `${targetDirectory}/${fileName}`;
@@ -97,7 +89,7 @@ export async function GET(request: NextRequest) {
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as GithubApiError;
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to check target markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_CHECK_TARGET_MARKDOWN_FILE.message },
       { status: githubResponse.status },
     );
 

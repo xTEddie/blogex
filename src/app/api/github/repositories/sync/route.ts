@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import { createSyncMarkdownCommitMessage } from "@/lib/commit-messages";
 
 type GithubContentItem = {
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const sourceRepo = request.nextUrl.searchParams.get("sourceRepo")?.trim();
@@ -70,18 +71,12 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("sourceDirectory")?.trim() || "_posts";
 
   if (!sourceRepo || !sourceBranch) {
-    return NextResponse.json(
-      { error: "Query params sourceRepo and sourceBranch are required." },
-      { status: 400 },
-    );
+    return jsonError("QUERY_SOURCE_REPO_SOURCE_BRANCH_REQUIRED");
   }
 
   const parsedRepo = parseRepo(sourceRepo);
   if (!parsedRepo) {
-    return NextResponse.json(
-      { error: "sourceRepo must be in owner/name format." },
-      { status: 400 },
-    );
+    return jsonError("SOURCE_REPO_OWNER_NAME_REQUIRED");
   }
 
   const githubResponse = await fetch(
@@ -99,7 +94,7 @@ export async function GET(request: NextRequest) {
   if (!githubResponse.ok) {
     const errorData = (await githubResponse.json()) as GithubApiError;
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch source markdown files." },
+      { error: errorData.message ?? API_ERRORS.FAILED_FETCH_SOURCE_MARKDOWN_FILES.message },
       { status: githubResponse.status },
     );
     if (githubResponse.status === 401) {
@@ -124,7 +119,7 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: SyncPayload;
@@ -132,7 +127,7 @@ export async function POST(request: NextRequest) {
   try {
     payload = (await request.json()) as SyncPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const sourceRepo = payload.sourceRepo?.trim();
@@ -143,34 +138,22 @@ export async function POST(request: NextRequest) {
   const targetBranch = payload.targetBranch?.trim();
 
   if (!sourceRepo || !sourceBranch || !sourcePath) {
-    return NextResponse.json(
-      { error: "Fields sourceRepo, sourceBranch, and sourcePath are required." },
-      { status: 400 },
-    );
+    return jsonError("FIELDS_SOURCE_REPO_SOURCE_BRANCH_SOURCE_PATH_REQUIRED");
   }
 
   if (!targetRepo || !targetBranch) {
-    return NextResponse.json(
-      { error: "Fields targetRepo and targetBranch are required." },
-      { status: 400 },
-    );
+    return jsonError("FIELDS_TARGET_REPO_TARGET_BRANCH_REQUIRED");
   }
 
   if (!sourcePath.endsWith(".md") || !sourcePath.startsWith(`${sourceDirectory}/`)) {
-    return NextResponse.json(
-      { error: "sourcePath must be a markdown file inside the source directory." },
-      { status: 400 },
-    );
+    return jsonError("SOURCE_PATH_MARKDOWN_INSIDE_SOURCE_DIRECTORY_REQUIRED");
   }
 
   const parsedSource = parseRepo(sourceRepo);
   const parsedTarget = parseRepo(targetRepo);
 
   if (!parsedSource || !parsedTarget) {
-    return NextResponse.json(
-      { error: "Repository fields must be in owner/name format." },
-      { status: 400 },
-    );
+    return jsonError("REPOSITORY_FIELDS_OWNER_NAME_REQUIRED");
   }
 
   const encodedSourcePath = encodeContentPath(sourcePath);
@@ -185,7 +168,7 @@ export async function POST(request: NextRequest) {
   if (!sourceFileResponse.ok) {
     const errorData = (await sourceFileResponse.json()) as GithubApiError;
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to fetch source markdown content." },
+      { error: errorData.message ?? API_ERRORS.FAILED_FETCH_SOURCE_MARKDOWN_CONTENT.message },
       { status: sourceFileResponse.status },
     );
     if (sourceFileResponse.status === 401) {
@@ -196,10 +179,7 @@ export async function POST(request: NextRequest) {
 
   const sourceFile = (await sourceFileResponse.json()) as GithubContentItem;
   if (sourceFile.type !== "file" || sourceFile.encoding !== "base64" || !sourceFile.content) {
-    return NextResponse.json(
-      { error: "Unsupported source markdown format." },
-      { status: 500 },
-    );
+    return jsonError("UNSUPPORTED_SOURCE_MARKDOWN_FORMAT");
   }
 
   const markdown = Buffer.from(sourceFile.content.replace(/\n/g, ""), "base64").toString(
@@ -207,7 +187,7 @@ export async function POST(request: NextRequest) {
   );
   const sourceFileName = sourcePath.split("/").pop();
   if (!sourceFileName) {
-    return NextResponse.json({ error: "Invalid source file path." }, { status: 400 });
+    return jsonError("INVALID_SOURCE_FILE_PATH");
   }
 
   const targetPath = `_posts/${sourceFileName}`;
@@ -228,7 +208,7 @@ export async function POST(request: NextRequest) {
   } else if (existingTargetResponse.status !== 404) {
     const errorData = (await existingTargetResponse.json()) as GithubApiError;
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to check target file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_CHECK_TARGET_FILE.message },
       { status: existingTargetResponse.status },
     );
     if (existingTargetResponse.status === 401) {
@@ -259,7 +239,7 @@ export async function POST(request: NextRequest) {
 
   if (!putResponse.ok) {
     const response = NextResponse.json(
-      { error: putData.message ?? "Failed to sync markdown file." },
+      { error: putData.message ?? API_ERRORS.FAILED_SYNC_MARKDOWN_FILE.message },
       { status: putResponse.status },
     );
     if (putResponse.status === 401) {

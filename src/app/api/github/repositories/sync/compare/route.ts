@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 
 type GithubContentResponse = {
   type?: "file" | "dir";
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const sourceRepo = request.nextUrl.searchParams.get("sourceRepo")?.trim();
@@ -126,35 +127,23 @@ export async function GET(request: NextRequest) {
     !targetRepo ||
     !targetBranch
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Query params sourceRepo, sourceBranch, sourcePath, targetRepo, and targetBranch are required.",
-      },
-      { status: 400 },
-    );
+    return jsonError("QUERY_COMPARE_REQUIRED");
   }
 
   if (!sourcePath.endsWith(".md")) {
-    return NextResponse.json(
-      { error: "sourcePath must be a markdown file path." },
-      { status: 400 },
-    );
+    return jsonError("SOURCE_PATH_MARKDOWN_FILE_PATH_REQUIRED");
   }
 
   const parsedSource = parseRepo(sourceRepo);
   const parsedTarget = parseRepo(targetRepo);
 
   if (!parsedSource || !parsedTarget) {
-    return NextResponse.json(
-      { error: "sourceRepo and targetRepo must be in owner/name format." },
-      { status: 400 },
-    );
+    return jsonError("SOURCE_AND_TARGET_REPO_OWNER_NAME_REQUIRED");
   }
 
   const sourceFileName = sourcePath.split("/").pop();
   if (!sourceFileName) {
-    return NextResponse.json({ error: "Invalid sourcePath." }, { status: 400 });
+    return jsonError("INVALID_SOURCE_PATH");
   }
 
   const targetPath = `${targetDirectory}/${sourceFileName}`;
@@ -187,7 +176,7 @@ export async function GET(request: NextRequest) {
   if (!sourceResponse.ok) {
     const errorData = (await sourceResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to load source markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_LOAD_SOURCE_MARKDOWN_FILE.message },
       { status: sourceResponse.status },
     );
     if (sourceResponse.status === 401) {
@@ -202,10 +191,7 @@ export async function GET(request: NextRequest) {
     sourceData.encoding !== "base64" ||
     !sourceData.content
   ) {
-    return NextResponse.json(
-      { error: "Unsupported source markdown response format." },
-      { status: 500 },
-    );
+    return jsonError("UNSUPPORTED_SOURCE_MARKDOWN_RESPONSE_FORMAT");
   }
 
   const targetResponse = await fetch(
@@ -236,7 +222,7 @@ export async function GET(request: NextRequest) {
   if (!targetResponse.ok) {
     const errorData = (await targetResponse.json()) as { message?: string };
     const response = NextResponse.json(
-      { error: errorData.message ?? "Failed to load target markdown file." },
+      { error: errorData.message ?? API_ERRORS.FAILED_LOAD_TARGET_MARKDOWN_FILE.message },
       { status: targetResponse.status },
     );
     if (targetResponse.status === 401) {
@@ -251,10 +237,7 @@ export async function GET(request: NextRequest) {
     targetData.encoding !== "base64" ||
     !targetData.content
   ) {
-    return NextResponse.json(
-      { error: "Unsupported target markdown response format." },
-      { status: 500 },
-    );
+    return jsonError("UNSUPPORTED_TARGET_MARKDOWN_RESPONSE_FORMAT");
   }
 
   const sourceText = decodeBase64Content(sourceData.content);

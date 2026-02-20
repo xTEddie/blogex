@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { clearAuthCookies } from "@/lib/auth-cookies";
+import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import {
   buildRepositoryConfigContent,
   getRepositoryInitTemplatePath,
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   const page = parsePositiveInteger(request.nextUrl.searchParams.get("page"), 1);
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
       {
         error:
           allRepositoriesResponse.error?.message ??
-          "Failed to fetch repositories.",
+          API_ERRORS.FAILED_FETCH_REPOSITORIES.message,
       },
       { status: allRepositoriesResponse.status },
     );
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
 
       if (check.status === 401) {
         const response = NextResponse.json(
-          { error: check.error?.message ?? "GitHub token is no longer valid." },
+          { error: check.error?.message ?? API_ERRORS.GITHUB_TOKEN_NO_LONGER_VALID.message },
           { status: 401 },
         );
         return clearAuthCookies(response);
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get("gh_oauth_token")?.value;
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonError("UNAUTHORIZED");
   }
 
   let payload: CreateRepositoryPayload;
@@ -214,17 +215,14 @@ export async function POST(request: NextRequest) {
   try {
     payload = (await request.json()) as CreateRepositoryPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    return jsonError("INVALID_JSON_PAYLOAD");
   }
 
   const name = payload.name?.trim();
   const isPrivate = Boolean(payload.private);
 
   if (!name) {
-    return NextResponse.json(
-      { error: "Repository name is required." },
-      { status: 400 },
-    );
+    return jsonError("REPOSITORY_NAME_REQUIRED");
   }
 
   let defaultPostContent: string;
@@ -232,10 +230,7 @@ export async function POST(request: NextRequest) {
     const templatePath = getRepositoryInitTemplatePath();
     defaultPostContent = await readFile(templatePath, "utf8");
   } catch {
-    return NextResponse.json(
-      { error: "Failed to load default markdown template." },
-      { status: 500 },
-    );
+    return jsonError("FAILED_LOAD_DEFAULT_MARKDOWN_TEMPLATE");
   }
 
   const githubResponse = await fetch("https://api.github.com/user/repos", {
@@ -260,7 +255,7 @@ export async function POST(request: NextRequest) {
 
   if (!githubResponse.ok) {
     const response = NextResponse.json(
-      { error: githubData.message ?? "Failed to create repository." },
+      { error: githubData.message ?? API_ERRORS.FAILED_CREATE_REPOSITORY.message },
       { status: githubResponse.status },
     );
     if (githubResponse.status === 401) {
@@ -305,7 +300,7 @@ export async function POST(request: NextRequest) {
       };
       if (blogexConfigResponse.status === 401) {
         const response = NextResponse.json(
-          { error: configError.message ?? "GitHub token is no longer valid." },
+          { error: configError.message ?? API_ERRORS.GITHUB_TOKEN_NO_LONGER_VALID.message },
           { status: 401 },
         );
         return clearAuthCookies(response);
@@ -342,7 +337,7 @@ export async function POST(request: NextRequest) {
       };
       if (createPostsDirectoryResponse.status === 401) {
         const response = NextResponse.json(
-          { error: postsError.message ?? "GitHub token is no longer valid." },
+          { error: postsError.message ?? API_ERRORS.GITHUB_TOKEN_NO_LONGER_VALID.message },
           { status: 401 },
         );
         return clearAuthCookies(response);
