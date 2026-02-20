@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
-import { clearAuthCookies } from "@/lib/auth-cookies";
+import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import {
   buildRepositoryConfigContent,
@@ -120,7 +120,7 @@ async function hasBlogexConfig(token: string, repositoryFullName: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("gh_oauth_token")?.value;
+  const token = request.cookies.get(OAUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
     return jsonError("UNAUTHORIZED");
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("gh_oauth_token")?.value;
+  const token = request.cookies.get(OAUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
     return jsonError("UNAUTHORIZED");

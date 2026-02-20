@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearAuthCookies } from "@/lib/auth-cookies";
+import { OAUTH_TOKEN_COOKIE, clearAuthCookies } from "@/lib/auth-cookies";
 import { API_ERRORS, jsonError } from "@/lib/api-errors";
 import { createUpdateBlogexConfigCommitMessage } from "@/lib/commit-messages";
 import { REPOSITORY_CONFIG_FILE_PATH } from "@/lib/repository-init-config";
@@ -88,7 +88,7 @@ async function fetchExistingConfig(token: string, repo: string, branch: string) 
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get("gh_oauth_token")?.value;
+  const token = request.cookies.get(OAUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
     return jsonError("UNAUTHORIZED");
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const token = request.cookies.get("gh_oauth_token")?.value;
+  const token = request.cookies.get(OAUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
     return jsonError("UNAUTHORIZED");

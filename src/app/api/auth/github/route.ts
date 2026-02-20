@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-errors";
+import { setOAuthStateCookie } from "@/lib/auth-cookies";
 
-const OAUTH_STATE_COOKIE = "gh_oauth_state";
 const CALLBACK_PATH = "/auth/github/callback";
 
 function getAppUrl(request: NextRequest): string {
@@ -30,15 +30,7 @@ export async function GET(request: NextRequest) {
   const authorizeUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
   const response = NextResponse.redirect(authorizeUrl);
 
-  response.cookies.set({
-    name: OAUTH_STATE_COOKIE,
-    value: state,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 10,
-  });
+  setOAuthStateCookie(response, state);
 
   return response;
 }

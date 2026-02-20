@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-errors";
-
-const OAUTH_STATE_COOKIE = "gh_oauth_state";
-const OAUTH_TOKEN_COOKIE = "gh_oauth_token";
+import {
+  OAUTH_STATE_COOKIE,
+  clearOAuthStateCookie,
+  setOAuthTokenCookie,
+} from "@/lib/auth-cookies";
 const CALLBACK_PATH = "/auth/github/callback";
 
 type GithubTokenResponse = {
@@ -34,12 +36,7 @@ export async function GET(request: NextRequest) {
     const invalidStateResponse = NextResponse.redirect(
       new URL("/?error=invalid_oauth_state", request.url),
     );
-    invalidStateResponse.cookies.set({
-      name: OAUTH_STATE_COOKIE,
-      value: "",
-      path: "/",
-      maxAge: 0,
-    });
+    clearOAuthStateCookie(invalidStateResponse);
     return invalidStateResponse;
   }
 
@@ -69,34 +66,14 @@ export async function GET(request: NextRequest) {
     const oauthFailedResponse = NextResponse.redirect(
       new URL("/?error=oauth_exchange_failed", request.url),
     );
-    oauthFailedResponse.cookies.set({
-      name: OAUTH_STATE_COOKIE,
-      value: "",
-      path: "/",
-      maxAge: 0,
-    });
+    clearOAuthStateCookie(oauthFailedResponse);
     return oauthFailedResponse;
   }
 
   const response = NextResponse.redirect(new URL("/user", request.url));
-  // OAUTH token cookie valid for 12 hours (GitHub tokens do not expire by default, but we set a reasonable max age for the cookie)
-  const oauthTokenSystemExpiry = 60 * 60 * 12;
-  response.cookies.set({
-    name: OAUTH_TOKEN_COOKIE,
-    value: tokenData.access_token,
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: oauthTokenSystemExpiry,
-  });
-
-  response.cookies.set({
-    name: OAUTH_STATE_COOKIE,
-    value: "",
-    path: "/",
-    maxAge: 0,
-  });
+  // GitHub OAuth tokens do not expire by default; we cap the cookie lifetime to keep sessions bounded.
+  setOAuthTokenCookie(response, tokenData.access_token);
+  clearOAuthStateCookie(response);
 
   return response;
 }

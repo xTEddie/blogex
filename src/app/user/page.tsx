@@ -2,11 +2,12 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import CreateRepositoryForm from "@/components/create-repository-form";
+import { OAUTH_TOKEN_COOKIE } from "@/lib/auth-cookies";
 import { getGithubUser } from "@/lib/github-user";
 
 export default async function UserPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("gh_oauth_token")?.value;
+  const token = cookieStore.get(OAUTH_TOKEN_COOKIE)?.value;
 
   if (!token) {
     redirect("/");
