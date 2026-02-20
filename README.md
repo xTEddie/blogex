@@ -84,6 +84,8 @@ npm install
       GITHUB_CLIENT_ID=your_github_oauth_client_id
       GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
       APP_URL=http://localhost:3000
+      # Optional: set to enable Google Analytics
+      NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
       ```
 
 5. Run the app:
@@ -109,6 +111,7 @@ npm run dev
    - `GITHUB_CLIENT_ID`
    - `GITHUB_CLIENT_SECRET`
    - `APP_URL` = `https://<your-vercel-domain>`
+   - `NEXT_PUBLIC_GA_MEASUREMENT_ID` (optional)
 4. Deploy the project.
 5. In your existing GitHub OAuth App settings, update:
    - `Homepage URL` = `https://<your-vercel-domain>`
