@@ -1,7 +1,16 @@
 {
   "name": "blogex",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xTEddie/blogex"
+  },
+  "bugs": {
+    "url": "https://github.com/xTEddie/blogex/issues"
+  },
+  "homepage": "https://github.com/xTEddie/blogex#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
