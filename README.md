@@ -92,6 +92,20 @@ npm run dev
 - `npm run start`: Run the production server.
 - `npm run lint`: Run ESLint.
 
+## Deployment (Vercel)
+
+1. Push your repository to GitHub.
+2. In Vercel, click `Add New` -> `Project`, then import this repository.
+3. Configure production environment variables in Vercel:
+   - `GITHUB_CLIENT_ID`
+   - `GITHUB_CLIENT_SECRET`
+   - `APP_URL` = `https://<your-vercel-domain>`
+4. Deploy the project.
+5. In your existing GitHub OAuth App settings, update:
+   - `Homepage URL` = `https://<your-vercel-domain>`
+   - `Authorization callback URL` = `https://<your-vercel-domain>/auth/github/callback`
+6. Redeploy if needed, then test login/logout and repository actions in production.
+
 ## Usage
 
 1. Login: Authenticate with GitHub
