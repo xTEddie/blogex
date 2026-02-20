@@ -1,3 +1,5 @@
+import { APP_PATHS } from "@/lib/app-paths";
+
 export default function Home() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 px-4 py-12 sm:px-6">
@@ -16,7 +18,7 @@ export default function Home() {
 
         <form
           className="mt-8"
-          action="/api/auth/github"
+          action={APP_PATHS.AUTH_GITHUB_START}
           method="get"
         >
           <button

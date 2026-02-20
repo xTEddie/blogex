@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { HomeIcon } from "@/components/icons";
 import { CONNECT_SESSION_KEY, CONNECT_SESSION_TTL_MS } from "@/lib/cache-config";
+import { APP_PATHS } from "@/lib/app-paths";
 import {
   fetchRepositoryConfig,
   fetchSyncMarkdownFiles,
@@ -235,13 +236,13 @@ export default function WorkspaceSettingsPage() {
           </h1>
           <div className="flex items-center gap-2">
             <Link
-              href="/workspace"
+              href={APP_PATHS.WORKSPACE}
               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               Workspace
             </Link>
             <Link
-              href="/user"
+              href={APP_PATHS.USER}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               <HomeIcon className="h-3.5 w-3.5 fill-current" />

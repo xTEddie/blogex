@@ -7,6 +7,7 @@ import ExplorerStep from "@/components/workspace/explorer-step";
 import RepositoryStep from "@/components/workspace/repository-step";
 import ResumeWorkspaceSessionBanner from "@/components/workspace/resume-workspace-session-banner";
 import { useWorkspaceFlow } from "@/hooks/use-workspace-flow";
+import { APP_PATHS } from "@/lib/app-paths";
 
 export default function ConnectRepositoriesPage() {
   const workspace = useWorkspaceFlow();
@@ -21,13 +22,13 @@ export default function ConnectRepositoriesPage() {
           </h1>
           <div className="flex items-center gap-2">
             <Link
-              href="/workspace/settings"
+              href={APP_PATHS.WORKSPACE_SETTINGS}
               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               Settings
             </Link>
             <Link
-              href="/user"
+              href={APP_PATHS.USER}
               className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/15 sm:text-sm"
             >
               <HomeIcon className="h-3.5 w-3.5 fill-current" />

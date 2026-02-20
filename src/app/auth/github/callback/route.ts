@@ -5,6 +5,7 @@ import {
   clearOAuthStateCookie,
   setOAuthTokenCookie,
 } from "@/lib/auth-cookies";
+import { APP_PATHS } from "@/lib/app-paths";
 import { GITHUB_OAUTH_CALLBACK_PATH } from "@/lib/oauth-config";
 
 type GithubTokenResponse = {
@@ -33,8 +34,10 @@ export async function GET(request: NextRequest) {
   const storedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
 
   if (!code || !state || !storedState || state !== storedState) {
+    const invalidStateUrl = new URL(APP_PATHS.HOME, request.url);
+    invalidStateUrl.searchParams.set("error", "invalid_oauth_state");
     const invalidStateResponse = NextResponse.redirect(
-      new URL("/?error=invalid_oauth_state", request.url),
+      invalidStateUrl,
     );
     clearOAuthStateCookie(invalidStateResponse);
     return invalidStateResponse;
@@ -63,14 +66,16 @@ export async function GET(request: NextRequest) {
   const tokenData = (await tokenResponse.json()) as GithubTokenResponse;
 
   if (!tokenResponse.ok || !tokenData.access_token) {
+    const oauthFailedUrl = new URL(APP_PATHS.HOME, request.url);
+    oauthFailedUrl.searchParams.set("error", "oauth_exchange_failed");
     const oauthFailedResponse = NextResponse.redirect(
-      new URL("/?error=oauth_exchange_failed", request.url),
+      oauthFailedUrl,
     );
     clearOAuthStateCookie(oauthFailedResponse);
     return oauthFailedResponse;
   }
 
-  const response = NextResponse.redirect(new URL("/user", request.url));
+  const response = NextResponse.redirect(new URL(APP_PATHS.USER, request.url));
   // GitHub OAuth tokens do not expire by default; we cap the cookie lifetime to keep sessions bounded.
   setOAuthTokenCookie(response, tokenData.access_token);
   clearOAuthStateCookie(response);

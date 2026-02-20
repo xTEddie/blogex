@@ -1,8 +1,10 @@
+import { APP_PATHS } from "@/lib/app-paths";
+
 /**
  * OAuth configuration shared across auth route handlers.
  * Keep these values centralized to make scope/callback updates low-risk.
  */
-export const GITHUB_OAUTH_CALLBACK_PATH = "/auth/github/callback";
+export const GITHUB_OAUTH_CALLBACK_PATH = APP_PATHS.AUTH_GITHUB_CALLBACK;
 
 /**
  * GitHub OAuth scopes requested by blogex.
