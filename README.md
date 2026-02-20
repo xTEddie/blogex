@@ -21,6 +21,21 @@ GitHub-native CMS for Markdown blogs.
 - Routing: Next.js App Router (`src/app`)
 - API: Internal REST endpoints in Next.js + GitHub REST API (`api.github.com`)
 
+## Project Structure
+
+```txt
+blogex/
+└─ src/
+   ├─ app/                    # Next.js App Router pages and API route handlers
+   │  ├─ api/                 # Server API endpoints used by the UI
+   │  ├─ auth/                # OAuth callback route segment
+   │  ├─ user/                # Logged-in user landing page
+   │  └─ workspace/           # Workspace and workspace settings pages
+   ├─ components/             # Reusable UI components and workspace step views
+   ├─ hooks/                  # Client hooks (workspace orchestration logic)
+   └─ lib/                    # Shared utilities, API clients, constants, config helpers
+```
+
 ## Getting Started
 
 ### Prerequisites
