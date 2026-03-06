@@ -1,0 +1,101 @@
+.post-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.post-gallery a {
+  display: block;
+}
+
+.post-gallery img {
+  width: 100%;
+  height: auto;
+  margin: 0;
+  object-fit: cover;
+}
+
+.post-carousel {
+  @apply relative my-6 rounded-xl border border-[var(--border-default)] bg-[var(--code-block-bg-default)] p-3;
+}
+
+.post-carousel__viewport {
+  @apply overflow-hidden rounded-lg;
+}
+
+.post-carousel__track {
+  display: flex;
+  transition: transform 250ms ease;
+}
+
+.post-carousel__slide {
+  flex: 0 0 100%;
+  margin: 0;
+}
+
+.post-carousel__slide img {
+  display: block;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--code-block-bg-default) 70%, black 8%);
+}
+
+.post-carousel__slide figcaption {
+  @apply mt-2 text-sm md:text-base text-[var(--text-muted)];
+}
+
+.post-carousel__button {
+  @apply absolute top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full border border-[var(--border-default)] text-xl leading-none;
+  background: color-mix(in oklab, var(--code-block-bg-default) 88%, white 12%);
+}
+
+.post-carousel__button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.post-carousel__button--prev {
+  left: 0.75rem;
+}
+
+.post-carousel__button--next {
+  right: 0.75rem;
+}
+
+.post-carousel__dots {
+  @apply mt-3 flex items-center justify-center gap-2;
+}
+
+.post-carousel__dot {
+  @apply h-2.5 w-2.5 rounded-full border border-[var(--border-default)];
+  background: transparent;
+}
+
+.post-carousel__dot.is-active {
+  background: var(--text-emphasis);
+}
+
+.back-to-top-btn {
+  @apply text-sm font-semibold px-4 py-2 rounded-full border border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-emphasis)] hover:border-[var(--text-emphasis)] transition-colors cursor-pointer;
+}
+
+@media screen and (max-width: 720px) {
+  .post-carousel {
+    padding: 0.5rem;
+  }
+
+  .post-carousel__slide img {
+    aspect-ratio: 3 / 4;
+  }
+
+  .post-carousel__button--prev {
+    left: 0.5rem;
+  }
+
+  .post-carousel__button--next {
+    right: 0.5rem;
+  }
+}

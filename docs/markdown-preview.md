@@ -32,6 +32,7 @@ Example plugin object:
 ## Add behavior plugins
 
 Use `remarkPlugins`, `rehypePlugins`, or `components` in a plugin object.
+For DOM-level interactions (for example a preview-only carousel), use `onMount`.
 
 Example:
 
@@ -41,6 +42,27 @@ Example:
   rehypePlugins: [myRehypePlugin],
 }
 ```
+
+Interactive example:
+
+```ts
+{
+  id: "my-interaction",
+  onMount: (rootElement) => {
+    const button = rootElement.querySelector("button.my-toggle");
+    if (!button) return;
+    const onClick = () => {
+      // preview-only interaction
+    };
+    button.addEventListener("click", onClick);
+    return () => button.removeEventListener("click", onClick);
+  },
+}
+```
+
+Notes:
+- Inline JS from markdown (`onclick`, `<script>`) does not run in preview by design.
+- Keep preview interactions in plugins for safety and code review.
 
 ## Defaults
 

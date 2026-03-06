@@ -2,6 +2,7 @@
 @import "../styles/markdown-preview/base.css";
 @import "../styles/markdown-preview/plugins/typography.css";
 @import "../styles/markdown-preview/plugins/callouts.css";
+@import "../styles/markdown-preview/plugins/carousel.css";
 
 :root {
   --background: #ffffff;

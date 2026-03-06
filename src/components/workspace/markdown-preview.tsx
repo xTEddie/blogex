@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   DEFAULT_MARKDOWN_PREVIEW_PLUGIN_IDS,
@@ -17,6 +20,7 @@ export default function MarkdownPreview({
   pluginIds = DEFAULT_MARKDOWN_PREVIEW_PLUGIN_IDS,
   className,
 }: MarkdownPreviewProps) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const plugins = getMarkdownPreviewPlugins({ previewBaseUrl, pluginIds });
 
   const remarkPlugins = plugins.flatMap((plugin) => plugin.remarkPlugins ?? []);
@@ -30,8 +34,23 @@ export default function MarkdownPreview({
     .filter(Boolean)
     .join(" ");
 
+  useEffect(() => {
+    const rootElement = rootRef.current;
+    if (!rootElement) {
+      return;
+    }
+
+    const cleanups = plugins
+      .map((plugin) => plugin.onMount?.(rootElement))
+      .filter((cleanup): cleanup is () => void => typeof cleanup === "function");
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [markdown, plugins]);
+
   return (
-    <div className={wrapperClassName}>
+    <div ref={rootRef} className={wrapperClassName}>
       <ReactMarkdown
         remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
