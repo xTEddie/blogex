@@ -115,6 +115,7 @@ export default function ConnectRepositoriesPage() {
             compareStatus={state.compareStatus}
             compareDiff={state.compareDiff}
             compareMessage={state.compareMessage}
+            previewBaseUrl={state.previewBlogUrl}
             targetStatus={state.targetStatus}
             editorView={state.editorView}
             onEditorViewChange={actions.setEditorView}

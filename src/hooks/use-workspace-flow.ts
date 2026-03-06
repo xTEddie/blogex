@@ -35,6 +35,31 @@ type TargetConfig = {
   targetDirectory: string;
 };
 
+function normalizePreviewBaseUrl(blogUrl?: string) {
+  if (typeof blogUrl !== "string") {
+    return "";
+  }
+
+  const trimmed = blogUrl.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return "";
+    }
+
+    parsed.hash = "";
+    parsed.search = "";
+    const pathname = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${pathname}`;
+  } catch {
+    return "";
+  }
+}
+
 type TargetStatus = FileSyncStatusValue;
 
 type PersistedConnectState = {
@@ -215,6 +240,7 @@ export function useWorkspaceFlow() {
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [resumeState, setResumeState] = useState<PersistedConnectState | null>(null);
   const [targetConfig, setTargetConfig] = useState<TargetConfig | null>(null);
+  const [previewBlogUrl, setPreviewBlogUrl] = useState("");
   const [targetStatus, setTargetStatus] = useState<TargetStatus>("unavailable");
   const syncStatusRequestId = useRef(0);
 
@@ -592,6 +618,7 @@ export function useWorkspaceFlow() {
 
       if (!result.ok) {
         setTargetConfig(null);
+        setPreviewBlogUrl("");
         setTargetStatus("unavailable");
         return null;
       }
@@ -601,9 +628,12 @@ export function useWorkspaceFlow() {
 
       if (!data.exists || !config) {
         setTargetConfig(null);
+        setPreviewBlogUrl("");
         setTargetStatus("unavailable");
         return null;
       }
+
+      setPreviewBlogUrl(normalizePreviewBaseUrl(config.blogUrl));
 
       const nextConfig: TargetConfig = {
         targetRepo: config.targetRepo?.trim() ?? "",
@@ -621,6 +651,7 @@ export function useWorkspaceFlow() {
       return nextConfig;
     } catch {
       setTargetConfig(null);
+      setPreviewBlogUrl("");
       setTargetStatus("error");
       return null;
     }
@@ -1140,6 +1171,7 @@ export function useWorkspaceFlow() {
       renameFileName,
       totalPages,
       resumeState,
+      previewBlogUrl,
       targetStatus,
     },
     derived: {

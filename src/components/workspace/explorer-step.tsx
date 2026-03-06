@@ -35,6 +35,7 @@ type ExplorerStepProps = {
   compareStatus: SyncCompareStatus | "idle" | "error";
   compareDiff: string;
   compareMessage: string | null;
+  previewBaseUrl: string;
   targetStatus: FileSyncStatusValue;
   editorView: "edit" | "preview";
   onEditorViewChange: (view: "edit" | "preview") => void;
@@ -47,6 +48,27 @@ type ExplorerStepProps = {
   frontmatterEntries: Array<[string, unknown]>;
   parsedEditorBody: string;
 };
+
+function resolvePreviewUrl(rawUrl: string, previewBaseUrl: string) {
+  if (!rawUrl || !previewBaseUrl) {
+    return rawUrl;
+  }
+
+  const trimmedUrl = rawUrl.trim();
+  if (!trimmedUrl) {
+    return rawUrl;
+  }
+
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmedUrl) || trimmedUrl.startsWith("//")) {
+    return rawUrl;
+  }
+
+  try {
+    return new URL(trimmedUrl, previewBaseUrl).toString();
+  } catch {
+    return rawUrl;
+  }
+}
 
 export default function ExplorerStep({
   selectedRepo,
@@ -78,6 +100,7 @@ export default function ExplorerStep({
   compareStatus,
   compareDiff,
   compareMessage,
+  previewBaseUrl,
   targetStatus,
   editorView,
   onEditorViewChange,
@@ -414,7 +437,35 @@ export default function ExplorerStep({
                   </div>
                 ) : null}
 
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsedEditorBody}</ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: ({ href, ...props }) => (
+                      <a
+                        {...props}
+                        href={
+                          typeof href === "string"
+                            ? resolvePreviewUrl(href, previewBaseUrl)
+                            : href
+                        }
+                      />
+                    ),
+                    img: ({ src, alt, ...props }) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        {...props}
+                        src={
+                          typeof src === "string"
+                            ? resolvePreviewUrl(src, previewBaseUrl)
+                            : src
+                        }
+                        alt={alt ?? ""}
+                      />
+                    ),
+                  }}
+                >
+                  {parsedEditorBody}
+                </ReactMarkdown>
               </div>
             ) : (
               <p className="text-sm text-zinc-300">
