@@ -34,6 +34,39 @@ type UpdateConfigPayload = {
   message?: string;
 };
 
+function normalizeBlogUrl(blogUrl?: string) {
+  if (typeof blogUrl !== "string") {
+    return blogUrl;
+  }
+
+  const trimmed = blogUrl.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return trimmed;
+    }
+
+    parsed.hash = "";
+    parsed.search = "";
+
+    const pathname = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${pathname}`;
+  } catch {
+    return trimmed;
+  }
+}
+
+function normalizeBlogexConfig(config: BlogexConfig): BlogexConfig {
+  return {
+    ...config,
+    blogUrl: normalizeBlogUrl(config.blogUrl),
+  };
+}
+
 function decodeGithubContent(content: string, encoding?: string) {
   if (encoding === "base64") {
     return Buffer.from(content.replace(/\n/g, ""), "base64").toString("utf8");
@@ -158,6 +191,8 @@ export async function PUT(request: NextRequest) {
     return jsonError("FIELD_CONFIG_REQUIRED");
   }
 
+  const normalizedConfig = normalizeBlogexConfig(payload.config);
+
   const existing = await fetchExistingConfig(token, repo, branch);
 
   if (existing.status !== 200 && existing.status !== 404) {
@@ -180,7 +215,7 @@ export async function PUT(request: NextRequest) {
       headers: getGithubHeaders(token, { withJson: true }),
       body: JSON.stringify({
         message: payload.message?.trim() || createUpdateBlogexConfigCommitMessage(),
-        content: Buffer.from(`${JSON.stringify(payload.config, null, 2)}\n`).toString(
+        content: Buffer.from(`${JSON.stringify(normalizedConfig, null, 2)}\n`).toString(
           "base64",
         ),
         branch,
