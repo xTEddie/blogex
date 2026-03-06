@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import FileSyncStatus, { type FileSyncStatusValue } from "@/components/file-sync-status";
 import { CompareIcon, RenameIcon, SaveIcon } from "@/components/icons";
@@ -439,6 +441,7 @@ export default function ExplorerStep({
 
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
                   components={{
                     a: ({ href, ...props }) => (
                       <a
