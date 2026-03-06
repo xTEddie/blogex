@@ -17,6 +17,7 @@ export type PostFile = {
 
 export type BlogexConfig = {
   owner: string;
+  blogUrl: string;
   targetRepo: string;
   targetBranch: string;
   targetDirectory: string;

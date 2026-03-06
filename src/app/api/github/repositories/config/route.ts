@@ -21,6 +21,7 @@ type GithubApiError = {
 
 type BlogexConfig = {
   owner?: string;
+  blogUrl?: string;
   targetRepo?: string;
   targetBranch?: string;
   targetDirectory?: string;

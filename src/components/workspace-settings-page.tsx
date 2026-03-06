@@ -23,6 +23,7 @@ type PersistedConnectState = {
 
 const DEFAULT_CONFIG: BlogexConfig = {
   owner: "",
+  blogUrl: "",
   targetRepo: "",
   targetBranch: "",
   targetDirectory: "",
@@ -69,6 +70,7 @@ export default function WorkspaceSettingsPage() {
 
       setConfig({
         owner: data.config.owner ?? "",
+        blogUrl: data.config.blogUrl ?? "",
         targetRepo: data.config.targetRepo ?? "",
         targetBranch: data.config.targetBranch ?? "",
         targetDirectory: data.config.targetDirectory ?? "",
@@ -317,6 +319,19 @@ export default function WorkspaceSettingsPage() {
                 setConfig((prev) => ({ ...prev, owner: event.target.value }))
               }
               placeholder={STRINGS.workspaceSettings.placeholders.owner}
+              className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
+            />
+          </label>
+
+          <label className="text-sm text-zinc-200">
+            {STRINGS.workspaceSettings.labels.blogUrl}
+            <input
+              type="url"
+              value={config.blogUrl}
+              onChange={(event) =>
+                setConfig((prev) => ({ ...prev, blogUrl: event.target.value }))
+              }
+              placeholder={STRINGS.workspaceSettings.placeholders.blogUrl}
               className="mt-1.5 w-full rounded-xl border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none ring-white/40 placeholder:text-zinc-500 focus:ring-2"
             />
           </label>
