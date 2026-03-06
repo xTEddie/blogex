@@ -1,9 +1,6 @@
-import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
 import FileSyncStatus, { type FileSyncStatusValue } from "@/components/file-sync-status";
 import { CompareIcon, RenameIcon, SaveIcon } from "@/components/icons";
+import MarkdownPreview from "@/components/workspace/markdown-preview";
 import { STRINGS } from "@/lib/strings";
 import { type PostFile, type SyncCompareStatus } from "@/lib/workspace-client";
 
@@ -50,27 +47,6 @@ type ExplorerStepProps = {
   frontmatterEntries: Array<[string, unknown]>;
   parsedEditorBody: string;
 };
-
-function resolvePreviewUrl(rawUrl: string, previewBaseUrl: string) {
-  if (!rawUrl || !previewBaseUrl) {
-    return rawUrl;
-  }
-
-  const trimmedUrl = rawUrl.trim();
-  if (!trimmedUrl) {
-    return rawUrl;
-  }
-
-  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmedUrl) || trimmedUrl.startsWith("//")) {
-    return rawUrl;
-  }
-
-  try {
-    return new URL(trimmedUrl, previewBaseUrl).toString();
-  } catch {
-    return rawUrl;
-  }
-}
 
 export default function ExplorerStep({
   selectedRepo,
@@ -420,7 +396,7 @@ export default function ExplorerStep({
                 className="min-h-[340px] w-full resize-y rounded-lg border border-white/15 bg-zinc-950 px-3 py-2.5 font-mono text-sm leading-6 text-zinc-100 outline-none ring-white/40 focus:ring-2"
               />
             ) : selectedPostPath && editorView === "preview" ? (
-              <div className="markdown-preview min-w-0 text-sm leading-6 text-zinc-100">
+              <div className="min-w-0 text-sm leading-6 text-zinc-100">
                 {frontmatterEntries.length > 0 ? (
                   <div className="mb-4 rounded-lg border border-white/15 bg-zinc-950/80 p-3">
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
@@ -439,36 +415,7 @@ export default function ExplorerStep({
                   </div>
                 ) : null}
 
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                  components={{
-                    a: ({ href, ...props }) => (
-                      <a
-                        {...props}
-                        href={
-                          typeof href === "string"
-                            ? resolvePreviewUrl(href, previewBaseUrl)
-                            : href
-                        }
-                      />
-                    ),
-                    img: ({ src, alt, ...props }) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        {...props}
-                        src={
-                          typeof src === "string"
-                            ? resolvePreviewUrl(src, previewBaseUrl)
-                            : src
-                        }
-                        alt={alt ?? ""}
-                      />
-                    ),
-                  }}
-                >
-                  {parsedEditorBody}
-                </ReactMarkdown>
+                <MarkdownPreview markdown={parsedEditorBody} previewBaseUrl={previewBaseUrl} />
               </div>
             ) : (
               <p className="text-sm text-zinc-300">

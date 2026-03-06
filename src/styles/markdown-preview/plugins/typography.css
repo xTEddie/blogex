@@ -1,0 +1,67 @@
+.markdown-preview.mdp-theme-typography h1,
+.markdown-preview.mdp-theme-typography h2,
+.markdown-preview.mdp-theme-typography h3,
+.markdown-preview.mdp-theme-typography h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.markdown-preview.mdp-theme-typography h1 {
+  font-size: 1.5rem;
+}
+
+.markdown-preview.mdp-theme-typography h2 {
+  font-size: 1.25rem;
+}
+
+.markdown-preview.mdp-theme-typography h3 {
+  font-size: 1.125rem;
+}
+
+.markdown-preview.mdp-theme-typography p,
+.markdown-preview.mdp-theme-typography ul,
+.markdown-preview.mdp-theme-typography ol,
+.markdown-preview.mdp-theme-typography blockquote,
+.markdown-preview.mdp-theme-typography pre {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-preview.mdp-theme-typography ul,
+.markdown-preview.mdp-theme-typography ol {
+  padding-left: 1.25rem;
+}
+
+.markdown-preview.mdp-theme-typography ul {
+  list-style: disc;
+}
+
+.markdown-preview.mdp-theme-typography ol {
+  list-style: decimal;
+}
+
+.markdown-preview.mdp-theme-typography a {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.markdown-preview.mdp-theme-typography code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+}
+
+.markdown-preview.mdp-theme-typography pre {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.markdown-preview.mdp-theme-typography pre code {
+  background: transparent;
+  padding: 0;
+}
